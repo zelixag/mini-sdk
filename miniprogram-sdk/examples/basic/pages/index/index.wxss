@@ -10,8 +10,28 @@
 /* 数字人画布区域 */
 .avatar-canvas {
   width: 100%;
-  height: 60vh;
   background-color: #111;
+}
+
+/* 画布大小滑块 */
+.canvas-size-section {
+  padding: 10rpx 20rpx;
+  background-color: #1a1a1a;
+  border-top: 1rpx solid #333;
+}
+
+/* 收起/展开按钮 */
+.toggle-bar {
+  padding: 16rpx 0;
+  background-color: #222;
+  text-align: center;
+  border-top: 1rpx solid #333;
+  border-bottom: 1rpx solid #333;
+}
+
+.toggle-text {
+  color: #4CAF50;
+  font-size: 26rpx;
 }
 
 /* 控制面板 */
@@ -19,7 +39,7 @@
   flex: 1;
   padding: 20rpx;
   background-color: #1a1a1a;
-  border-top: 1rpx solid #333;
+  overflow-y: auto;
 }
 
 /* 状态栏 */

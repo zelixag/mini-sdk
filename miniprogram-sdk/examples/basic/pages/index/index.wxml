@@ -5,12 +5,32 @@
     type="webgl2"
     id="avatar-canvas"
     class="avatar-canvas"
+    style="height: {{canvasHeight}}vh;"
     bindtouchstart="handleTouchStart"
     bindtouchend="handleTouchEnd"
   ></canvas>
 
-  <!-- 控制面板 -->
-  <view class="control-panel">
+  <!-- 画布大小滑块 -->
+  <view class="canvas-size-section">
+    <text class="label">画布: {{canvasHeight}}%</text>
+    <slider
+      min="20"
+      max="95"
+      value="{{canvasHeight}}"
+      bindchange="handleCanvasSizeChange"
+      activeColor="#4CAF50"
+      block-color="#fff"
+      block-size="12"
+    />
+  </view>
+
+  <!-- 收起/展开按钮 -->
+  <view class="toggle-bar" bindtap="togglePanel">
+    <text class="toggle-text">{{panelCollapsed ? '展开控制面板 ▲' : '收起控制面板 ▼'}}</text>
+  </view>
+
+  <!-- 控制面板（可收起） -->
+  <view class="control-panel" wx:if="{{!panelCollapsed}}">
     <!-- 状态显示 -->
     <view class="status-bar">
       <text class="status-text">状态: {{status}}</text>

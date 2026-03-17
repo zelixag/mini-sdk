@@ -53,7 +53,11 @@ Page({
 
     // 输入
     inputText: '',
-    volume: 1.0
+    volume: 1.0,
+
+    // UI
+    canvasHeight: 60,
+    panelCollapsed: false
   },
 
   // SDK 实例
@@ -67,6 +71,39 @@ Page({
 
   onReady() {
     console.log('Page ready');
+  },
+
+  /**
+   * 收起/展开控制面板
+   */
+  togglePanel() {
+    this.setData({ panelCollapsed: !this.data.panelCollapsed });
+  },
+
+  /**
+   * 画布大小调节
+   */
+  handleCanvasSizeChange(e) {
+    const height = e.detail.value;
+    this.setData({ canvasHeight: height });
+    // 通知 SDK 重建缓冲
+    if (this.canvasNode && this.gl) {
+      setTimeout(() => {
+        const query = this.createSelectorQuery();
+        query.select('#avatar-canvas').fields({ node: true, size: true }).exec((res) => {
+          if (!res?.[0]) return;
+          const dpr = wx.getWindowInfo?.().pixelRatio || 2;
+          const w = Math.round((res[0].width || 300) * dpr);
+          const h = Math.round((res[0].height || 400) * dpr);
+          if (this.canvasNode) {
+            this.canvasNode.width = w;
+            this.canvasNode.height = h;
+            this.gl.viewport(0, 0, w, h);
+            this.avatar?.setCanvasSize?.(w, h);
+          }
+        });
+      }, 100);
+    }
   },
 
   /**
