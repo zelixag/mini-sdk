@@ -1,4 +1,4 @@
-import type { IBodyFrame, IRawFaceFrameData, IRawAudioFrameData, IRawEventFrameData, StateChangeInfo } from '../types'
+import type { IBodyFrame, IRawBodyFrameData, IRawFaceFrameData, IRawAudioFrameData, IRawEventFrameData, StateChangeInfo } from '../types'
 import { createModuleLogger } from '../utils/logger'
 
 const log = createModuleLogger('CacheQueue')
@@ -6,6 +6,8 @@ const log = createModuleLogger('CacheQueue')
 export class DataCacheQueue {
   // Body frames indexed by frame number
   private bodyQueue: Map<number, IBodyFrame> = new Map()
+  // Body chunks with frame ranges (sf, ef) for findBodyChunk
+  private bodyChunks: IRawBodyFrameData[] = []
   // 最新的 body 数据（用于获取视频名）
   private latestBodyData: { n: string; sf: number; ef: number } | null = null
   // Face data queues
@@ -41,6 +43,35 @@ export class DataCacheQueue {
       }
     }
     this.bodyQueue.set(frame.frameIndex, frame)
+  }
+
+  /** 添加 body chunk（保留 sf/ef 范围，供 findBodyChunk 使用） */
+  addBodyChunk(chunk: IRawBodyFrameData): void {
+    // 移除同 body_id 的旧 chunk（相同视频段）
+    this.bodyChunks = this.bodyChunks.filter(
+      c => !(c.body_id === chunk.body_id && c.sf === chunk.sf)
+    )
+    this.bodyChunks.push(chunk)
+    // 按 sf 排序
+    this.bodyChunks.sort((a, b) => a.sf - b.sf)
+    // 保留最新的 body 数据
+    this.latestBodyData = { n: chunk.n, sf: chunk.sf, ef: chunk.ef }
+  }
+
+  /** 根据帧号查找所属的 body chunk */
+  findBodyChunk(frameIndex: number): IRawBodyFrameData | null {
+    for (let i = this.bodyChunks.length - 1; i >= 0; i--) {
+      const chunk = this.bodyChunks[i]
+      if (frameIndex >= chunk.sf && frameIndex <= chunk.ef) {
+        return chunk
+      }
+    }
+    return null
+  }
+
+  /** 清理已过期的 body chunks */
+  trimBodyChunks(currentFrame: number): void {
+    this.bodyChunks = this.bodyChunks.filter(c => c.ef >= currentFrame)
   }
 
   getBody(frameIndex: number): IBodyFrame | undefined {
@@ -169,6 +200,8 @@ export class DataCacheQueue {
   // === Cleanup ===
   clearAll(): void {
     this.bodyQueue.clear()
+    this.bodyChunks = []
+    this.latestBodyData = null
     this.facialQueue = []
     this.realFacialQueue = []
     this.audioQueue = []

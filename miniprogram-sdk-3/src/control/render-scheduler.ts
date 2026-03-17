@@ -135,10 +135,8 @@ export class RenderScheduler {
       this.frameIndex++
 
       // 渲染帧（优先用 avatarRenderer，否则用 bodyRenderer）
-      if (this.avatarRenderer?.render) {
-        if (this.composition?.compose) {
-          this.composition.compose(this.frameIndex)
-        }
+      if (this.avatarRenderer?.render && typeof this.avatarRenderer.render === 'function') {
+        this.avatarRenderer.render(this.frameIndex)
       } else if (this.bodyRenderer?.renderFrame) {
         // 没有 avatarRenderer 时，直接用 bodyRenderer 渲染
         this.bodyRenderer.renderFrame(this.frameIndex)
@@ -185,21 +183,17 @@ export class RenderScheduler {
 
       log.info('Processing body data:', bodyData.n, 'frame range:', bodyData.sf, '-', bodyData.ef)
 
-      // 更新缓存队列（包含视频名）
-      this.dataCacheQueue.updateBody({
-        frameIndex: bodyData.sf,
-        videoName: bodyData.n,
-        body_id: bodyData.body_id || 0,
-        data: null,
-        width: 0,
-        height: 0,
-      } as any)
+      // 存入 body chunk（保留 sf/ef 范围，供 BodyRendererMP.findBodyChunk 使用）
+      this.dataCacheQueue.addBodyChunk(bodyData)
 
       // 预下载视频（不阻塞）
       this.resourceManager.getVideoPath(bodyData.n).catch((e) => {
         log.error('Video preload failed:', bodyData.n, e)
       })
     }
+
+    // 清理过期的 body chunks
+    this.dataCacheQueue.trimBodyChunks(this.frameIndex)
   }
 
   // ---------- Face ----------
