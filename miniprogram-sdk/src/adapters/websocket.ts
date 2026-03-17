@@ -184,7 +184,14 @@ export class MiniProgramWebSocket {
    * 每条记录对应一个等待收齐附件的二进制事件，按到达顺序排队，每个二进制帧分配给队首 */
   private binaryQueue: Array<{ attachments: number; emitEvent: string; emitPayload: any; buffers: ArrayBuffer[] }> = [];
   private errorHandler: ErrorHandler;
-  // 注：Engine.IO 由服务端发起 ping，客户端只回复 pong，不应主动发 ping
+
+  // 客户端心跳：检测死连接（服务端可能不发 ping 或网络已中断但 onClose 未触发）
+  private heartbeatTimer: any = null;
+  private lastServerActivity = 0;
+  /** 心跳检测间隔（ms），超过此时间无服务端活动则主动关闭重连 */
+  private heartbeatIntervalMs = 45000;
+  /** 服务端无活动超时（ms） */
+  private heartbeatTimeoutMs = 90000;
 
   // 兼容 socket.io 的属性
   public connected = false;
@@ -298,8 +305,9 @@ export class MiniProgramWebSocket {
       this.socketTask.onClose((res: WechatMiniprogram.SocketCloseCallbackResult) => {
         this.connected = false;
         this.disconnected = true;
+        this._stopHeartbeat();
         this._emit('disconnect', res);
-        
+
         if (!this.isManualClose) {
           this._handleReconnect();
         }
@@ -320,6 +328,8 @@ export class MiniProgramWebSocket {
    * 43-[ackId, ...args]：Ack 响应
    */
   private _handleSocketMessage(res: { data: string | ArrayBuffer }): void {
+    // 记录服务端活动时间（用于心跳超时检测）
+    this.lastServerActivity = Date.now();
 
     try {
       if (typeof res.data === 'string') {
@@ -335,6 +345,9 @@ export class MiniProgramWebSocket {
             this.disconnected = false;
             this.reconnectAttempts = 0;
             this.id = Math.random().toString(36).substring(7);
+
+            // 启动客户端心跳检测
+            this._startHeartbeat();
 
             this.send('40'); // Socket.IO connect
             while (this.messageQueue.length > 0) {
@@ -430,6 +443,38 @@ export class MiniProgramWebSocket {
       log.error('Parse message error:', error);
       this.binaryQueue = []; // 解析出错时清空队列，避免状态不一致
       this._emit('message', res.data);
+    }
+  }
+
+  /** 启动客户端心跳检测 */
+  private _startHeartbeat(): void {
+    this._stopHeartbeat();
+    this.lastServerActivity = Date.now();
+    this.heartbeatTimer = setInterval(() => {
+      const elapsed = Date.now() - this.lastServerActivity;
+      if (elapsed > this.heartbeatTimeoutMs) {
+        log.warn('Server heartbeat timeout, closing connection for reconnect');
+        this._stopHeartbeat();
+        // 触发重连：关闭当前连接（onClose 会调用 _handleReconnect）
+        if (this.socketTask) {
+          try {
+            this.socketTask.close({ code: 4000, reason: 'Heartbeat timeout' });
+          } catch {}
+        }
+      } else if (elapsed > this.heartbeatIntervalMs && this.connected) {
+        // 主动发 ping 探测服务端是否存活
+        try {
+          this.send('2');
+        } catch {}
+      }
+    }, this.heartbeatIntervalMs);
+  }
+
+  /** 停止心跳检测 */
+  private _stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
     }
   }
 
@@ -623,6 +668,7 @@ export class MiniProgramWebSocket {
   disconnect(): void {
     this.isManualClose = true;
     this.reconnectAttempts = this.maxReconnectAttempts; // 阻止重连
+    this._stopHeartbeat();
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);

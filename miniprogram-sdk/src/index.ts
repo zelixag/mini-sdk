@@ -539,18 +539,26 @@ export class XmovAvatarMP {
         query: { token: si.token },
         transports: ['websocket'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 50,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 15000,
       });
 
       this.ttsaSocket = socket;
 
+      let hasConnectedBefore = false;
       socket.on('connect', () => {
         socket.emit('enter_room', {
           room: si.room,
           client_type: 'web',
           invisible_mode: false,
         });
+        // 重连成功后通知外部
+        if (hasConnectedBefore) {
+          console.log('[TTSA] reconnected, re-entered room');
+          this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA reconnected');
+        }
+        hasConnectedBefore = true;
       });
 
       socket.on('first_start_timestamp', async (e: any) => {
@@ -659,7 +667,10 @@ export class XmovAvatarMP {
         if (!resolved) finish(false);
       });
 
-      socket.on('disconnect', () => {});
+      socket.on('disconnect', (reason: any) => {
+        console.warn('[TTSA] disconnected, reason:', reason);
+        this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA disconnected', reason);
+      });
     });
   }
 

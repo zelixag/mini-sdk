@@ -210,55 +210,37 @@ export class AvatarRendererMP {
   render(frameIndex: number): void {
     if (!this.isInit) return;
 
-    const rawBody = this.bodyRenderer.getRawFrame(frameIndex);
+    const bodyId = (this.bodyRenderer.findBodyChunk(frameIndex) as any)?.body_id || 0;
 
-    if (this.pipeline && rawBody) {
-        const bodyId = (this.bodyRenderer.findBodyChunk(frameIndex) as any)?.body_id || 0;
-        let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
-        if (!faceDataAligned) {
-            faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
-        }
-        const faceDataNN = this.convertFaceData(faceDataAligned);
+    if (this.pipeline) {
+      // GLPipeline 路径：face mesh + body 融合渲染
+      const rawBody = this.bodyRenderer.getRawFrame(frameIndex);
+      if (!rawBody) return;
 
-        this.pipeline.renderFrame(
-            rawBody.data,
-            faceDataNN,
-            null, // background
-            null, // transform
-            rawBody.width,
-            rawBody.height
-        );
+      let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
+      if (!faceDataAligned) {
+        faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
+      }
+      const faceDataNN = this.convertFaceData(faceDataAligned);
+
+      this.pipeline.renderFrame(
+        rawBody.data,
+        faceDataNN,
+        null, // background
+        null, // transform
+        rawBody.width,
+        rawBody.height
+      );
     } else {
-        // 降级：纯 body 渲染路径
-        // 注意：如果上面调用了 getRawFrame 但没走 pipeline，videoDecoder 状态已经改变（seekToNextFrame）
-        // 这里不能再调用 bodyRenderer.renderFrame，因为它内部也会调 getRawFrame/getFrameData
-        // 所以 bodyRenderer.renderFrame 必须能处理“数据已被外部消费”的情况？
-        // 不，bodyRenderer.renderFrame 是独立的。
-        // 修正：如果走了 getRawFrame 但没走 pipeline，说明 pipeline 没初始化，那么应该走 else 分支。
-        // 但我们在 if 条件里调用了 getRawFrame，这会副作用。
-        // 应该先判断 pipeline 是否存在。
-        
-        // 重新组织逻辑：
-        if (this.pipeline) {
-             if (rawBody) {
-                 const bodyId = (this.bodyRenderer.findBodyChunk(frameIndex) as any)?.body_id || 0;
-                 let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
-                 if (!faceDataAligned) {
-                     faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
-                 }
-                 const faceDataNN = this.convertFaceData(faceDataAligned);
-                 this.pipeline.renderFrame(rawBody.data, faceDataNN, null, null, rawBody.width, rawBody.height);
-             }
-        } else {
-             const bodyId = (this.bodyRenderer.findBodyChunk(frameIndex) as any)?.body_id || 0;
-             let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
-             if (!faceDataAligned) {
-                 faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
-             }
-             const signal = this.faceSignalAdapter.extract(faceDataAligned);
-             const mouthOpen = this.lipSyncController.update(frameIndex, signal);
-             this.bodyRenderer.renderFrame(frameIndex, mouthOpen);
-        }
+      // 降级路径：纯 body 渲染 + 嘴型遮罩
+      // 不调用 getRawFrame（避免消耗帧），由 bodyRenderer.renderFrame 内部处理
+      let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
+      if (!faceDataAligned) {
+        faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
+      }
+      const signal = this.faceSignalAdapter.extract(faceDataAligned);
+      const mouthOpen = this.lipSyncController.update(frameIndex, signal);
+      this.bodyRenderer.renderFrame(frameIndex, mouthOpen);
     }
   }
 

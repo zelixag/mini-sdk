@@ -298,9 +298,9 @@ export class GLPipelineMP {
   private compat_features: { [index: string]: unknown } = {};
   private faceOffsetXPx: number = 0;
   private faceOffsetYPx: number = 0;
-  private headMotionScale: number = 1.5;
+  private headMotionScale: number = 1.0;
   private exprMotionScale: number = 1.0;
-  private eyeExtraScale: number = 0.0;
+  private eyeExtraScale: number = 0.5;
   private charData: GLPipelineCharData | null = null;
   private backgroundPipelineInfo!: PipelineInfo
   private backgroundVAO!: WebGLVertexArrayObject;
