@@ -358,7 +358,13 @@ export class MiniProgramWebSocket {
             return;
           }
           if (packet.type === 'ping') {
-            this.send('3'); // Engine.IO pong（服务端发 ping，客户端回 pong）
+            // Engine.IO pong 必须立即发送，绕过 readyState 检查
+            // 否则 pong 可能被排队，导致服务端 keepalive ping timeout
+            try {
+              this.socketTask!.send({ data: '3' });
+            } catch (e) {
+              log.error('Failed to send pong:', e);
+            }
             return;
           }
           if (packet.type === 'ack') {
@@ -446,14 +452,14 @@ export class MiniProgramWebSocket {
     }
   }
 
-  /** 启动客户端心跳检测 */
+  /** 启动客户端心跳检测（仅监控服务端活动，不主动发 ping） */
   private _startHeartbeat(): void {
     this._stopHeartbeat();
     this.lastServerActivity = Date.now();
     this.heartbeatTimer = setInterval(() => {
       const elapsed = Date.now() - this.lastServerActivity;
       if (elapsed > this.heartbeatTimeoutMs) {
-        log.warn('Server heartbeat timeout, closing connection for reconnect');
+        log.warn('Server heartbeat timeout (' + elapsed + 'ms), closing for reconnect');
         this._stopHeartbeat();
         // 触发重连：关闭当前连接（onClose 会调用 _handleReconnect）
         if (this.socketTask) {
@@ -461,11 +467,6 @@ export class MiniProgramWebSocket {
             this.socketTask.close({ code: 4000, reason: 'Heartbeat timeout' });
           } catch {}
         }
-      } else if (elapsed > this.heartbeatIntervalMs && this.connected) {
-        // 主动发 ping 探测服务端是否存活
-        try {
-          this.send('2');
-        } catch {}
       }
     }, this.heartbeatIntervalMs);
   }
@@ -533,8 +534,10 @@ export class MiniProgramWebSocket {
 
     // 检查 SocketTask.readyState，确保连接真正打开
     // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
-    if (this.socketTask.readyState !== 1) { // 1 = OPEN
-      log.warn('[send] SocketTask.readyState is not OPEN, current:', this.socketTask.readyState, 'queueing message');
+    // 注：某些微信版本 SocketTask 没有 readyState 属性，此时跳过检查
+    const readyState = this.socketTask.readyState;
+    if (readyState !== undefined && readyState !== 1) { // 1 = OPEN
+      log.warn('send: SocketTask.readyState is not OPEN, current:', readyState, 'queueing message');
       this.messageQueue.push({ data, ackId });
       return;
     }
