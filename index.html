@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="icon" href="./favicon.png">
+  <title>Document</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      column-gap: 16px;
+      height: 100vh;
+      background: #eee;
+    }
+
+    #offline {
+      box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    }
+
+    .action {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+      row-gap: 16px;
+    }
+    button {
+      font-size: 16px;
+      line-height: 20px;
+    }
+
+    #msg {
+      height: 40px;
+      background-color: #fff;
+      box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+    }
+
+    #ratio {
+      box-sizing: border-box;
+      flex: 1;
+      padding: 2px 4px;
+      font-size: 14px;
+      line-height: 16px;
+      border: 0;
+      background-color: #fff;
+    }
+
+    #msg-text {
+      padding: 0;
+      border: 0;
+      width: 100%;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="width: 460px;height: 640px;">
+    <div id="offline"></div>
+  </div>
+  <div class="action">
+    <div id="msg"></div>
+    <button onclick="sdk.init()">init</button>
+    <button onclick="sdk.start()">start</button>
+    <div style="display: flex; flex-direction: column;">
+      <textarea id="msg-text" rows="10"></textarea>
+      <button style="width: 100%;" onclick="sdk.speak()">speak</button>
+    </div>
+    <button onclick="sdk.stop()">stop</button>
+  </div>
+  <script src="https://media.youyan.xyz/youling-lite-sdk/socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://media.youyan.xyz/youling-lite-sdk/msgpack/1.12.2/msgpack.min.js"></script>
+  <script>
+    const $script = document.createElement('script')
+    $script.src = './dist/index.umd.js?r=' + Math.random()
+    document.body.appendChild($script)
+
+    const video = {
+      width: 3240,
+      height: 1920,
+    }
+
+    const sdk = {
+      init() {
+      },
+      start() {
+      },
+      speak() {
+      },
+      stop() {
+      },
+    }
+
+    function writeMsg(msg) {
+      document.querySelector('#msg').innerHTML = msg;
+    }
+
+    function initSDK() {
+      offline = new XmovAvatar({
+        containerId: '#offline',
+        width: 960 / 2,
+        height: 1280 / 2,
+        appId: '123',
+        appSecret: '123',
+        gatewayServer: 'http://192.168.88.101:32607',
+      })
+
+      sdk.init = function fInit() {
+        writeMsg('初始化中...');
+        offline.init().then(() => {
+          writeMsg('初始化成功');
+        });
+      }
+
+      sdk.start = function fStart() {
+        offline.start();
+      }
+
+      sdk.speak = function fSpeak() {
+        const ssml = document.querySelector('#msg-text').value;
+        offline.speak(ssml, true);
+      }
+
+      sdk.stop = function fStop() {
+        offline.stop();
+        writeMsg('stop 成功');
+      }
+    }
+
+    document.onreadystatechange = () => {
+      if (document.readyState === 'complete') {
+        initSDK();
+      }
+    }
+
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "@xmov/avatar-miniprogram-v2",
+  "version": "0.1.0",
+  "description": "XmovAvatar WeChat MiniProgram SDK v2",
+  "source": "src/index.ts",
+  "type": "module",
+  "main": "dist/xmov-avatar-mp.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "dev": "rollup -c rollup.config.js --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-alias": "^5.1.0",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.0",
+    "rollup-plugin-esbuild": "^6.1.0",
+    "typescript": "^5.3.0"
+  }
+}

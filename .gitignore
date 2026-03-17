@@ -1,0 +1,7 @@
+# app
+node_modules
+*.local.*
+
+# 本地环境与密钥（勿提交）
+.env
+.env.local

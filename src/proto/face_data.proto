@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+message MeshData {
+  int32 index = 1;
+  repeated float weights = 2 [deprecated = true];
+}
+
+message JointData {
+  repeated float translate = 1;
+  bytes rotate = 2 [deprecated = true];
+}
+
+message FaceFrameData {
+  int32 id = 1;
+  string s = 2;
+  int32 sf = 3;
+  int32 ef = 4;
+
+  bytes bsw = 5;
+
+  // v1 废弃字段
+  // repeated repeated float movable_joint_transforms = 6 [deprecated = true];
+  // int32 head_texture_model_index = 7 [deprecated = true];
+  // repeated float head_texture_pca_weights = 8 [deprecated = true];
+  // int32 teeth_texture_model_index = 9 [deprecated = true];
+  // repeated float teeth_texture_pca_weights = 10 [deprecated = true];
+
+
+  // v2
+  bytes cs = 11;
+  repeated JointData js = 12;
+  repeated MeshData ms = 13;
+
+  int32 body_id = 14;
+  int32 face_frame_type = 15;
+}
+
+message FaceFrameDataList {
+  repeated FaceFrameData data = 1;
+}

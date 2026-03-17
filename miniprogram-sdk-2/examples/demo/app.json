@@ -1,0 +1,20 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "数字人 SDK Demo",
+    "navigationBarBackgroundColor": "#000000",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#000000"
+  },
+  "requiredBackgroundModes": ["audio"],
+  "networkTimeout": {
+    "request": 90000,
+    "connectSocket": 90000,
+    "uploadFile": 90000,
+    "downloadFile": 90000
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

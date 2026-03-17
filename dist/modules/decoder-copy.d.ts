@@ -1,0 +1,41 @@
+import { bodyFile, IRawBodyFrameData } from "../types/frame-data";
+import ResourceManager from "./ResourceManager";
+import SaveAndDownload from "../control/SaveAndDownload";
+import { DataCacheQueue } from "../control/DataCacheQueue";
+export default class ParallelDecoder {
+    private tasks;
+    private queue;
+    private maxParallel;
+    private currentParallel;
+    private _locked;
+    private currentTaskId;
+    private resourceManager;
+    private onFrame;
+    private onDone;
+    private isFirstDecode;
+    private pendingAbort;
+    private abortAfterEf;
+    private pendingNewQueue;
+    private currentDecodedFrameIndex;
+    private abortAfterFrame;
+    private cacheVideoCount;
+    private saveAndDownload;
+    private dataCacheQueue;
+    constructor(options: {
+        resourceManager: ResourceManager;
+        saveAndDownload: SaveAndDownload;
+        dataCacheQueue: DataCacheQueue;
+    });
+    decode(files: Array<IRawBodyFrameData>, onFrame: (file: bodyFile, frame: any, index: number) => void, onDone: (file: bodyFile, id: string) => void): void;
+    updateQueue(files: Array<IRawBodyFrameData>): void;
+    _tryStartNext(): Promise<void>;
+    _startWorker(file: bodyFile): void;
+    cacheVideo(): void;
+    abort(): void;
+    abortOne(id: string): void;
+    destroy(): void;
+    _getCurrentProcessingEf(): number | null;
+    _handlePendingAbort(file: bodyFile, index: number): void;
+    private _cleanupOldWorkers;
+    syncDecode(currentFrameIndex: number): void;
+}

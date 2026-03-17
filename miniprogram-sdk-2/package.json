@@ -1,0 +1,36 @@
+{
+  "name": "xmov-avatar-mp2",
+  "version": "2.0.0",
+  "description": "XmovAvatar Mini Program SDK 2.0 - 微信小程序数字人 SDK",
+  "main": "dist/xmov-avatar-mp2.js",
+  "umd:main": "dist/xmov-avatar-mp2.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "xmov",
+    "avatar",
+    "digital-human",
+    "miniprogram",
+    "wechat"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@xmov/avatar-miniprogram",
+  "version": "0.1.0-alpha.129",
+  "description": "XmovAvatar SDK for WeChat MiniProgram",
+  "type": "module",
+  "source": "src/index.ts",
+  "main": "./dist/xmov-avatar-mp.heavy.js",
+  "umd:main": "./dist/xmov-avatar-mp.heavy.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c build-heavy-rollup.js && node postbuild-patch.js",
+    "build:watch": "rollup -c build-heavy-rollup.js --watch",
+    "dev": "rollup -c build-heavy-rollup.js --watch"
+  },
+  "keywords": [
+    "miniprogram",
+    "wechat",
+    "avatar",
+    "sdk"
+  ],
+  "author": "xmov avatar team",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-alias": "^5.1.0",
+    "@rollup/plugin-commonjs": "^28.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.0.0",
+    "rollup": "^4.9.0",
+    "rollup-plugin-esbuild": "^6.2.1",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^1.12.2",
+    "blueimp-md5": "^2.19.0",
+    "pako": "^2.1.0"
+  }
+}

@@ -1,0 +1,65 @@
+<!-- pages/index/index.wxml -->
+<view class="container">
+  <!-- 数字人画布 -->
+  <canvas
+    type="webgl2"
+    id="avatar-canvas"
+    class="avatar-canvas"
+    bindtouchstart="handleTouchStart"
+    bindtouchend="handleTouchEnd"
+  ></canvas>
+
+  <!-- 控制面板 -->
+  <view class="control-panel">
+    <!-- 状态显示 -->
+    <view class="status-bar">
+      <text class="status-text">状态: {{status}}</text>
+      <text class="session-text" wx:if="{{sessionId}}">会话: {{sessionId}}</text>
+    </view>
+
+    <!-- 基础控制 -->
+    <view class="btn-row">
+      <button class="btn" bindtap="handleInit" disabled="{{isInitialized}}">初始化</button>
+      <button class="btn" bindtap="handleStart" disabled="{{!isInitialized || isPlaying}}">开始</button>
+      <button class="btn" bindtap="handlePause" disabled="{{!isPlaying}}">暂停</button>
+    </view>
+
+    <!-- 文本输入 -->
+    <view class="input-section">
+      <input
+        class="text-input"
+        placeholder="输入要说的话..."
+        value="{{inputText}}"
+        bindinput="handleInput"
+      />
+      <button class="btn speak-btn" bindtap="handleSpeak" disabled="{{!isPlaying}}">发送</button>
+    </view>
+
+    <!-- 状态按钮 -->
+    <view class="btn-row">
+      <button class="btn btn-small" bindtap="handleIdle">空闲</button>
+      <button class="btn btn-small" bindtap="handleListen">倾听</button>
+      <button class="btn btn-small" bindtap="handleThink">思考</button>
+    </view>
+
+    <!-- 音量控制 -->
+    <view class="volume-section">
+      <text class="label">音量: {{volume}}</text>
+      <slider
+        min="0"
+        max="100"
+        value="{{volume * 100}}"
+        bindchange="handleVolumeChange"
+        activeColor="#4CAF50"
+        block-color="#fff"
+        block-size="12"
+      />
+    </view>
+
+    <!-- 销毁按钮 -->
+    <view class="btn-row">
+      <button class="btn btn-danger" bindtap="handleStop" disabled="{{!isPlaying}}">停止</button>
+      <button class="btn btn-danger" bindtap="handleDestroy">销毁</button>
+    </view>
+  </view>
+</view>

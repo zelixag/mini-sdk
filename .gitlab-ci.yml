@@ -1,0 +1,68 @@
+stages:
+  - mr-sonar-check
+
+variables:
+  SONAR_HOST_URL: "https://sonarqube.xmov.ai"
+  SONAR_TOKEN: "sqp_540283890ea5c63a7fc4c1d977dc0bce6df95c96"  # Sonar 访问令牌（从 GitLab 仓库变量获取）
+  # 源码根目录
+  SONAR_SOURCES: "./"
+  # 基础排除目录
+  SONAR_EXCLUSIONS: "node_modules/**,dist/**,build/**,public/**,.husky/**,.vscode/**,script/**,Dockerfile,*.json"
+  GIT_DEPTH: "0"
+
+mr-sonar-scan:
+  stage: mr-sonar-check
+  image: node:$NODE_VERSION-alpine
+  before_script:
+    # 1. 拉取目标分支（如 master/dev）作为基线
+    - if [ -n "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" ]; then
+        git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME:$CI_MERGE_REQUEST_TARGET_BRANCH_NAME;
+      fi
+    
+    # 2. 计算 MR 增量文件（仅扫描变更的文件，替代分支参数）
+    - |
+      if [ -n "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" ] && [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+        # 获取源分支与目标分支的差异文件列表（相对路径）
+        CHANGE_FILES=$(git diff --name-only origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME...origin/$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME | tr '\n' ',')
+        # 若有变更文件，动态添加到扫描范围（覆盖默认的 SONAR_SOURCES）
+        if [ -n "$CHANGE_FILES" ]; then
+          export SONAR_INCLUSIONS="$CHANGE_FILES"
+          echo "增量扫描文件：$SONAR_INCLUSIONS"
+        else
+          echo "无变更文件，跳过扫描"
+          exit 0
+        fi
+      else
+        echo "非 MR 场景，跳过扫描"
+        exit 0
+      fi
+    # 5. 安装前端依赖
+    - npm cache clean --force
+    - npm install --legacy-peer-deps
+
+  script:
+    # 执行 Sonar 扫描（社区版兼容方式：用 inclusions 指定增量文件）
+    - sonar-scanner
+      -Dsonar.host.url="$SONAR_HOST_URL"
+      -Dsonar.login="$SONAR_TOKEN"
+      -Dsonar.projectKey="$CI_PROJECT_NAME"
+      -Dsonar.projectName="$CI_PROJECT_TITLE"
+      -Dsonar.sources="$SONAR_SOURCES"
+      -Dsonar.exclusions="$SONAR_EXCLUSIONS"
+      -Dsonar.inclusions="$SONAR_INCLUSIONS"
+      -Dsonar.sourceEncoding="UTF-8"
+      -Dsonar.qualitygate.wait="true"
+      -Dsonar.qualitygate.timeout="600"
+
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      allow_failure: false
+
+  tags:
+    - xmov-local-ut
+
+  cache:
+    paths:
+      - node_modules/
+      - .sonar/cache/
+    key: $CI_COMMIT_REF_SLUG

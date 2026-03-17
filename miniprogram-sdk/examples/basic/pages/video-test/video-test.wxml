@@ -1,0 +1,11 @@
+<!-- 视频渲染测试页：用 VideoDecoder + getFrameData + texImage2D 渲染视频到 Canvas -->
+<view class="container">
+  <view class="canvas-wrap">
+    <canvas type="webgl" id="video-canvas" class="video-canvas"></canvas>
+  </view>
+  <view class="controls">
+    <button class="btn" bindtap="startRender">开始渲染</button>
+    <button class="btn" bindtap="stopRender">停止</button>
+  </view>
+  <view class="status" wx:if="{{status}}">{{status}}</view>
+</view>
