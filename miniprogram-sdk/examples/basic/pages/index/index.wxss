@@ -119,3 +119,136 @@
   display: block;
   margin-bottom: 10rpx;
 }
+
+/* WebSocket 监控面板 */
+.ws-section {
+  margin-top: 20rpx;
+  border-top: 1rpx solid #333;
+  padding-top: 16rpx;
+}
+
+.ws-header {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+}
+
+.ws-title {
+  color: #ccc;
+  font-size: 26rpx;
+  font-weight: 600;
+  margin-right: 16rpx;
+}
+
+.ws-indicator {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  margin-right: 10rpx;
+  background-color: #666;
+}
+
+.ws-indicator.ws-connected { background-color: #4CAF50; }
+.ws-indicator.ws-connecting { background-color: #FFC107; }
+.ws-indicator.ws-disconnected { background-color: #f44336; }
+
+.ws-status-text {
+  color: #888;
+  font-size: 22rpx;
+  flex: 1;
+}
+
+.ws-status-text.ws-connected { color: #4CAF50; }
+.ws-status-text.ws-disconnected { color: #f44336; }
+
+.toggle-arrow {
+  color: #666;
+  font-size: 22rpx;
+}
+
+/* 连接统计 */
+.ws-stats {
+  display: flex;
+  gap: 12rpx;
+  margin: 16rpx 0;
+}
+
+.ws-stat {
+  flex: 1;
+  background-color: #222;
+  border-radius: 8rpx;
+  padding: 12rpx;
+  text-align: center;
+}
+
+.ws-stat-label {
+  color: #666;
+  font-size: 20rpx;
+  display: block;
+}
+
+.ws-stat-value {
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 600;
+  display: block;
+  margin-top: 4rpx;
+}
+
+.ws-stat-value.ws-connected { color: #4CAF50; }
+.ws-stat-value.ws-disconnected { color: #f44336; }
+.ws-stat-value.ws-connecting { color: #FFC107; }
+
+/* 日志列表 */
+.ws-log-list {
+  height: 300rpx;
+  background-color: #111;
+  border-radius: 8rpx;
+  padding: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.ws-log {
+  display: flex;
+  align-items: flex-start;
+  gap: 10rpx;
+  padding: 6rpx 0;
+  border-bottom: 1rpx solid #1a1a1a;
+}
+
+.ws-log-time {
+  color: #555;
+  font-size: 20rpx;
+  flex-shrink: 0;
+  width: 130rpx;
+  font-family: monospace;
+}
+
+.ws-log-tag {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+  flex-shrink: 0;
+  color: #fff;
+  background-color: #555;
+}
+
+.ws-tag-face { background-color: #6366f1; }
+.ws-tag-body { background-color: #8b5cf6; }
+.ws-tag-audio { background-color: #ec4899; }
+.ws-tag-event { background-color: #f59e0b; }
+.ws-tag-conn { background-color: #10b981; }
+.ws-tag-err { background-color: #ef4444; }
+.ws-tag-send { background-color: #3b82f6; }
+
+.ws-log-msg {
+  color: #aaa;
+  font-size: 20rpx;
+  flex: 1;
+  word-break: break-all;
+}
+
+.ws-actions {
+  display: flex;
+  justify-content: flex-end;
+}

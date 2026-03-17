@@ -81,5 +81,51 @@
       <button class="btn btn-danger" bindtap="handleStop" disabled="{{!isPlaying}}">停止</button>
       <button class="btn btn-danger" bindtap="handleDestroy">销毁</button>
     </view>
+
+    <!-- WebSocket 监控面板 -->
+    <view class="ws-section">
+      <view class="ws-header" bindtap="toggleWsPanel">
+        <text class="ws-title">WebSocket 监控</text>
+        <text class="ws-indicator ws-{{wsStatus}}"></text>
+        <text class="ws-status-text">{{wsStatusText}}</text>
+        <text class="toggle-arrow">{{wsPanelOpen ? '▼' : '▶'}}</text>
+      </view>
+
+      <view wx:if="{{wsPanelOpen}}">
+        <!-- 连接状态 -->
+        <view class="ws-stats">
+          <view class="ws-stat">
+            <text class="ws-stat-label">状态</text>
+            <text class="ws-stat-value ws-{{wsStatus}}">{{wsStatusText}}</text>
+          </view>
+          <view class="ws-stat">
+            <text class="ws-stat-label">收到</text>
+            <text class="ws-stat-value">{{wsCounters.message}}</text>
+          </view>
+          <view class="ws-stat">
+            <text class="ws-stat-label">发送</text>
+            <text class="ws-stat-value">{{wsCounters.send}}</text>
+          </view>
+          <view class="ws-stat">
+            <text class="ws-stat-label">重连</text>
+            <text class="ws-stat-value">{{wsCounters.reconnect}}</text>
+          </view>
+        </view>
+
+        <!-- 数据流日志 -->
+        <scroll-view class="ws-log-list" scroll-y scroll-into-view="{{wsScrollAnchor}}" enhanced show-scrollbar="{{false}}">
+          <view class="ws-log" wx:for="{{wsLogs}}" wx:key="id" id="ws-{{item.id}}">
+            <text class="ws-log-time">{{item.time}}</text>
+            <text class="ws-log-tag ws-tag-{{item.tag}}">{{item.tag}}</text>
+            <text class="ws-log-msg">{{item.msg}}</text>
+          </view>
+          <view id="ws-bottom"></view>
+        </scroll-view>
+
+        <view class="ws-actions">
+          <button class="btn btn-small" bindtap="clearWsLogs">清空</button>
+        </view>
+      </view>
+    </view>
   </view>
 </view>

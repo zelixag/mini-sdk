@@ -57,7 +57,15 @@ Page({
 
     // UI
     canvasHeight: 60,
-    panelCollapsed: false
+    panelCollapsed: false,
+
+    // WebSocket 监控
+    wsPanelOpen: false,
+    wsStatus: 'disconnected',
+    wsStatusText: '未连接',
+    wsCounters: { message: 0, send: 0, reconnect: 0 },
+    wsLogs: [],
+    wsScrollAnchor: ''
   },
 
   // SDK 实例
@@ -181,27 +189,46 @@ Page({
         } else {
           console.log('SDK msg:', msg.code, msg.message);
         }
+        // WS 监控：连接状态
+        const m = msg.message || '';
+        if (m.includes('TTSA reconnected')) {
+          this.updateWsStatus('connected', '已重连');
+          this.wsCounterInc('reconnect');
+          this.addWsLog('conn', '重连成功');
+        } else if (m.includes('TTSA disconnected')) {
+          this.updateWsStatus('disconnected', '已断开');
+          this.addWsLog('err', '连接断开: ' + (msg.details || ''));
+        } else if (m.includes('connect_error')) {
+          this.updateWsStatus('disconnected', '连接错误');
+          this.addWsLog('err', '连接错误: ' + (msg.details || ''));
+        }
       },
       onTtsaReady: (e) => {
         console.log('TTSA ready:', e);
+        this.updateWsStatus('connected', '已连接');
+        this.addWsLog('conn', 'TTSA 连接就绪');
         wx.showToast({ title: 'TTSA 已连接', icon: 'success', duration: 1500 });
       },
       onFaceData: (data) => {
-        if (!this._faceDataLogged) {
-          this._faceDataLogged = true;
-          console.log('首次收到 face_data, count:', data?.length);
-        }
+        const count = Array.isArray(data) ? data.length : 0;
+        this.wsCounterInc('message');
+        this.addWsLog('face', 'face_data x' + count + (data?.[0] ? ' sf=' + data[0].sf : ''));
       },
       onBodyData: (data) => {
-        if (!this._bodyDataLogged) {
-          this._bodyDataLogged = true;
-          console.log('首次收到 body_data, count:', data?.length, 'name:', data?.[0]?.n);
-        }
+        const count = Array.isArray(data) ? data.length : 0;
+        this.wsCounterInc('message');
+        this.addWsLog('body', 'body_data x' + count + (data?.[0]?.n ? ' ' + data[0].n : ''));
+      },
+      onTtsAudio: (frames) => {
+        const first = Array.isArray(frames) ? frames[0] : frames;
+        this.wsCounterInc('message');
+        this.addWsLog('audio', 'tts_audio sid=' + (first?.sid ?? '?'));
       },
       onEventData: (events) => {
+        this.wsCounterInc('message');
         for (const frame of events || []) {
           for (const item of (frame.e || [])) {
-            console.log('Event:', item.type, item.text || '');
+            this.addWsLog('event', item.type + (item.text ? ': ' + item.text : ''));
           }
         }
       }
@@ -291,11 +318,14 @@ Page({
 
     const text = this.data.inputText;
     console.log('Speaking:', text);
+    this.wsCounterInc('send');
+    this.addWsLog('send', 'speak: ' + text);
     const speakId = this.avatar.speak(text);
 
     if (speakId) {
       wx.showToast({ title: '发送成功', icon: 'none', duration: 1500 });
     } else {
+      this.addWsLog('err', 'speak 失败，socket 未连接');
       wx.showToast({ title: 'speak 失败', icon: 'none' });
     }
     this.setData({ inputText: '' });
@@ -341,6 +371,46 @@ Page({
 
   handleTouchStart() {},
   handleTouchEnd() {},
+
+  // ========== WebSocket 监控 ==========
+
+  _wsLogId: 0,
+
+  toggleWsPanel() {
+    this.setData({ wsPanelOpen: !this.data.wsPanelOpen });
+  },
+
+  _stamp() {
+    const t = new Date();
+    return `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}.${String(t.getMilliseconds()).padStart(3,'0')}`;
+  },
+
+  addWsLog(tag, msg) {
+    const id = ++this._wsLogId;
+    const item = { id, time: this._stamp(), tag, msg };
+    const logs = [item, ...this.data.wsLogs].slice(0, 150);
+    this.setData({
+      wsLogs: logs,
+      wsScrollAnchor: 'ws-' + id
+    });
+  },
+
+  updateWsStatus(status, text) {
+    this.setData({ wsStatus: status, wsStatusText: text });
+  },
+
+  wsCounterInc(key) {
+    const counters = { ...this.data.wsCounters };
+    counters[key] = (counters[key] || 0) + 1;
+    this.setData({ wsCounters: counters });
+  },
+
+  clearWsLogs() {
+    this.setData({
+      wsLogs: [],
+      wsCounters: { message: 0, send: 0, reconnect: 0 }
+    });
+  },
 
   onUnload() {
     if (this.avatar) {
