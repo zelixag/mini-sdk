@@ -11,6 +11,9 @@ import type { ResourceManagerMP } from '../modules/resource-manager-adapter';
 import type { BodyRendererMP } from '../modules/body-renderer-mp';
 import type { AvatarRendererMP } from '../baseRender/AvatarRendererMP';
 import { alignFaceFrames } from '../core/face-frame-aligner';
+import { createModuleLogger } from '../utils/logger';
+
+const log = createModuleLogger('Scheduler');
 
 const DEFAULT_FPS = 24;
 
@@ -19,7 +22,6 @@ export interface RenderSchedulerMPOptions {
   bodyRenderer: BodyRendererMP;
   canvas: any;
   frameRate?: number;
-  onMessage?: (msg: string) => void;
 }
 
 export class RenderSchedulerMP {
@@ -28,8 +30,6 @@ export class RenderSchedulerMP {
   private bodyRenderer: BodyRendererMP;
   private avatarRenderer: AvatarRendererMP | null = null;
   private canvas: any;
-  private onMessage?: (msg: string) => void;
-
   private firstStartTimeMs: number = 0;
   private animId: any = null;
   private destroyed = false;
@@ -50,7 +50,6 @@ export class RenderSchedulerMP {
     this.canvas = options.canvas;
     this.frameRate = (options.frameRate && options.frameRate > 0) ? options.frameRate : DEFAULT_FPS;
     this.frameIntervalMs = 1000 / this.frameRate;
-    this.onMessage = options.onMessage;
     this.bodyRenderer.setDataCacheQueue(this.dataCacheQueue);
     this.bodyRenderer.setFrameRate(this.frameRate);
   }
@@ -143,7 +142,7 @@ export class RenderSchedulerMP {
     const raf = (globalThis as any).requestAnimationFrame;
     if (typeof raf === 'function') {
       if (Math.random() < 0.01) {
-        this.onMessage?.('[RenderSchedulerMP] Using requestAnimationFrame (global)');
+        log.info('Using requestAnimationFrame (global)');
       }
       this.animId = raf(() => this.renderLoop());
     } else {

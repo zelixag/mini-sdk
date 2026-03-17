@@ -11,6 +11,9 @@
 import type { IRawBodyFrameData } from '../types/frame-data';
 import type { ResourceManagerMP } from './resource-manager-adapter';
 import type { DataCacheQueueMP } from '../control/DataCacheQueueMP';
+import { createModuleLogger } from '../utils/logger';
+
+const log = createModuleLogger('BodyRenderer');
 
 function getWx(): any {
   const g = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? (window as any) : null));
@@ -82,7 +85,7 @@ export class BodyRendererMP {
     const now = Date.now();
     if (now - this.lastDecoderResetAt < 800) return;
     const details = String(error?.errMsg || error?.message || error || '');
-    this.onMessage?.(`[BodyRenderer] decoder reset: ${reason}${details ? `, ${details}` : ''}`);
+    log.warn('decoder reset:', reason, details || '');
     if (this.videoDecoder) {
       try { this.videoDecoder.stop?.(); } catch (_) {}
       try { this.videoDecoder.remove?.(); } catch (_) {}
@@ -273,7 +276,7 @@ void main(){
     const vsh = gl.createShader(gl.VERTEX_SHADER);
     const fsh = gl.createShader(gl.FRAGMENT_SHADER);
     if (!vsh || !fsh) {
-      this.onMessage?.('[BodyRenderer] createShader failed');
+      log.error('createShader failed');
       return;
     }
     gl.shaderSource(vsh, vs);
@@ -281,10 +284,10 @@ void main(){
     gl.compileShader(vsh);
     gl.compileShader(fsh);
     if (!gl.getShaderParameter(vsh, gl.COMPILE_STATUS)) {
-      this.onMessage?.('VS compile: ' + (gl.getShaderInfoLog(vsh) || ''));
+      log.error('VS compile:', gl.getShaderInfoLog(vsh) || '');
     }
     if (!gl.getShaderParameter(fsh, gl.COMPILE_STATUS)) {
-      this.onMessage?.('FS compile: ' + (gl.getShaderInfoLog(fsh) || ''));
+      log.error('FS compile:', gl.getShaderInfoLog(fsh) || '');
     }
     const prog = gl.createProgram();
     gl.attachShader(prog, vsh);
@@ -299,12 +302,12 @@ void main(){
     if (this.decoderRestarting) return false;
     const wx = getWx();
     if (!wx?.createVideoDecoder) {
-      this.onMessage?.('当前环境不支持 createVideoDecoder');
+      log.warn('当前环境不支持 createVideoDecoder');
       return false;
     }
     const path = this.resourceManager.getCachedVideoPath(name);
     if (!path) {
-      this.onMessage?.(`视频未就绪: ${name}`);
+      log.warn('视频未就绪:', name);
       return false;
     }
     if (this.videoDecoder) {
@@ -323,7 +326,7 @@ void main(){
       this.decoderRestarting = false;
       return true;
     } catch (e) {
-      this.onMessage?.(`VideoDecoder 启动失败: ${name}, ${e}`);
+      log.error('VideoDecoder 启动失败:', name, e);
       if (this.videoDecoder) {
         try { this.videoDecoder.stop?.(); } catch (_) {}
         try { this.videoDecoder.remove?.(); } catch (_) {}
@@ -379,7 +382,7 @@ void main(){
     const hasSeek = typeof decoder.seek === 'function';
     if (!this.decoderCapabilityLogged) {
       this.decoderCapabilityLogged = true;
-      this.onMessage?.(`[BodyRenderer] decoder capability seekToNextFrame=${String(hasSeekToNextFrame)}, seek=${String(hasSeek)}`);
+      log.info('decoder capability seekToNextFrame=' + String(hasSeekToNextFrame) + ', seek=' + String(hasSeek));
     }
     if (!hasSeekToNextFrame && hasSeek) {
       const localFrame = Math.max(0, frameIndex - chunk.sf);
@@ -431,7 +434,7 @@ void main(){
           }
         }
       } else {
-        this.onMessage?.(`[BodyRenderer] getFrameData failed: ${String(err?.errMsg || err?.message || err || '')}`);
+        log.error('getFrameData failed:', err?.errMsg || err?.message || err || '');
       }
       return null;
     }
@@ -452,7 +455,7 @@ void main(){
               this.resetDecoder('seekToNextFrame task invalid', err);
             }
           } else {
-            this.onMessage?.(`[BodyRenderer] seekToNextFrame failed: ${String(err?.errMsg || err?.message || err || '')}`);
+            log.error('seekToNextFrame failed:', err?.errMsg || err?.message || err || '');
           }
         }
       }

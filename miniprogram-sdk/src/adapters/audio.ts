@@ -13,6 +13,9 @@
 
 import { ErrorHandler, SDKError } from '../utils/ErrorHandler';
 import { EErrorCode } from '../types/error';
+import { createModuleLogger } from '../utils/logger';
+
+const log = createModuleLogger('Audio');
 
 export interface AudioAdapterOptions {
   src?: string;

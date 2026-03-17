@@ -13,6 +13,9 @@ import { LipSyncControllerMP } from '../control/LipSyncControllerMP';
 import { GLPipelineMP, GLPipelineCharData } from '../utils/GLPipelineMP';
 import { GLDeviceMP } from '../utils/GLDeviceMP';
 import { IBRAnimationGeneratorCharInfo_NN, IBRAnimationFrameData_NN, IBRMeshFrameInfo, transformMJT } from '../utils/DataInterfaceMP';
+import { createModuleLogger } from '../utils/logger';
+
+const log = createModuleLogger('AvatarRenderer');
 
 export interface AvatarRendererMPOptions {
   bodyRenderer: BodyRendererMP;
@@ -20,7 +23,6 @@ export interface AvatarRendererMPOptions {
   dataCacheQueue: DataCacheQueueMP;
   gl: WebGLRenderingContext | WebGL2RenderingContext;
   canvas: any;
-  onMessage?: (msg: string) => void;
 }
 
 export interface FaceAlignmentConfigMP {
@@ -46,7 +48,6 @@ export class AvatarRendererMP {
   private dataCacheQueue: DataCacheQueueMP;
   private gl: WebGLRenderingContext | WebGL2RenderingContext;
   private canvas: any;
-  private onMessage?: (msg: string) => void;
   private charInfo: IBRAnimationGeneratorCharInfo_NN | null = null;
   private isInit = false;
   private faceSignalAdapter: FaceSignalAdapter;
@@ -123,7 +124,6 @@ export class AvatarRendererMP {
     this.dataCacheQueue = options.dataCacheQueue;
     this.gl = options.gl;
     this.canvas = options.canvas;
-    this.onMessage = options.onMessage;
     this.faceSignalAdapter = new FaceSignalAdapter({
       blendshapeMap: this.resourceManager.resource_pack?.blendshape_map || []
     });
@@ -155,14 +155,14 @@ export class AvatarRendererMP {
             this.pipeline.setCharData(pipelineData);
             this.applyFaceAlignmentConfig();
             
-            this.onMessage?.('[AvatarRendererMP] GLPipeline initialized successfully');
+            log.info('GLPipeline initialized successfully');
         } catch (e) {
-            this.onMessage?.(`[AvatarRendererMP] GLPipeline init failed: ${e}`);
+            log.error(`GLPipeline init failed: ${e}`);
             this.charInfo = null;
             this.pipeline = null;
         }
     } else {
-        this.onMessage?.('[AvatarRendererMP] No char.bin found, fallback to BodyRenderer');
+        log.info('No char.bin found, fallback to BodyRenderer');
     }
 
     this.faceSignalAdapter.setBlendshapeMap(this.resourceManager.resource_pack?.blendshape_map || []);

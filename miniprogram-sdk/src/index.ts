@@ -33,11 +33,14 @@ import { decode as msgpackDecode } from '@msgpack/msgpack';
 import { decodeBodyData, normalizeRawInput } from './decoders/body-decoder';
 import { decodeFaceData, initFaceProto } from './decoders/face-decoder';
 import { AudioAdapter } from './adapters/audio';
+import { createModuleLogger } from './utils/logger';
 import type { IRawBodyFrameData, ITtsFaceFrameData, IRawEventFrameData, IRawAudioFrameData } from './types/frame-data';
 import { ResourceManagerMP } from './modules/resource-manager-adapter';
 import { BodyRendererMP } from './modules/body-renderer-mp';
 import { RenderSchedulerMP } from './control/RenderSchedulerMP';
 import { AvatarRendererMP, FaceAlignmentConfigMP } from './baseRender/AvatarRendererMP';
+
+const log = createModuleLogger('SDK');
 
 // ========== 第三步：导出适配器（供外部使用）==========
 export { CanvasAdapter, createCanvasAdapter } from './adapters/canvas';
@@ -276,13 +279,13 @@ export class XmovAvatarMP {
   sendText(text: string, options?: { isStart?: boolean; isEnd?: boolean; pitch?: string; speed?: string; volume?: string }): string | null {
     const socket = this.ttsaSocket;
     if (!socket?.connected) {
-      console.error('[sendText] socket 未连接');
+      log.error('sendText: socket 未连接');
       this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] sendText: TTSA not connected');
       return null;
     }
     const sessionId = this.sessionInfo?.session_id;
     if (!sessionId) {
-      console.error('[sendText] session_id 为空');
+      log.error('sendText: session_id 为空');
       this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] sendText: session_id is empty');
       return null;
     }
@@ -435,7 +438,6 @@ export class XmovAvatarMP {
         this.resourceManager = new ResourceManagerMP({
           resource_pack: rp,
           config: sessionData.config || this.options?.config,
-          onMessage: (p) => this.emitMessage(p.code as any, p.message, p.e)
         });
       }
       // 初始化渲染链路：BodyRenderer → RenderScheduler → AvatarRenderer
@@ -453,7 +455,7 @@ export class XmovAvatarMP {
           autoplay: false
         });
       } catch (e) {
-        console.error('[XmovAvatarMP] AudioAdapter init failed, error:', e);
+        log.error('AudioAdapter init failed, error:', e);
         this.emitMessage(EErrorCode.INIT_FAILED, '[XmovAvatarMP] AudioAdapter init failed', e);
       }
 
@@ -476,7 +478,6 @@ export class XmovAvatarMP {
           bodyRenderer,
           canvas,
           frameRate,
-          onMessage: (msg) => this.emitMessage(EErrorCode.INIT_FAILED, msg)
         });
         this.avatarRenderer = new AvatarRendererMP({
           bodyRenderer,
@@ -484,7 +485,6 @@ export class XmovAvatarMP {
           dataCacheQueue: this.renderScheduler.getDataCacheQueue(),
           gl,
           canvas,
-          onMessage: (msg) => this.emitMessage(EErrorCode.INIT_FAILED, msg)
         });
         this.renderScheduler.setAvatarRenderer(this.avatarRenderer);
       }
@@ -555,7 +555,7 @@ export class XmovAvatarMP {
         });
         // 重连成功后通知外部
         if (hasConnectedBefore) {
-          console.log('[TTSA] reconnected, re-entered room');
+          log.info('TTSA reconnected, re-entered room');
           this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA reconnected');
         }
         hasConnectedBefore = true;
@@ -656,19 +656,19 @@ export class XmovAvatarMP {
       });
 
       socket.on('connect_error', (err: any) => {
-        console.error('[TTSA] connect_error:', err);
+        log.error('TTSA connect_error:', err);
         this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA connect_error', err);
         finish(false);
       });
 
       socket.on('error', (err: any) => {
-        console.error('[TTSA] socket error:', err);
+        log.error('TTSA socket error:', err);
         this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA error', err);
         if (!resolved) finish(false);
       });
 
       socket.on('disconnect', (reason: any) => {
-        console.warn('[TTSA] disconnected, reason:', reason);
+        log.warn('TTSA disconnected, reason:', reason);
         this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA disconnected', reason);
       });
     });
@@ -824,7 +824,7 @@ export class XmovAvatarMP {
         try { onTtsAudio(arr); } catch {}
       }
     } catch (err) {
-      console.error('[TtsAudio] decode error:', err, 'raw type:', Object.prototype.toString.call(e));
+      log.error('tts_audio decode error:', err, 'raw type:', Object.prototype.toString.call(e));
       this.emitMessage(EErrorCode.AUDIO_PLAYBACK_ERROR, '[XmovAvatarMP] tts_audio decode failed', String(err));
     }
   }
@@ -857,7 +857,7 @@ export class XmovAvatarMP {
       this.audioPlayQueue.push({ path: tempPath, sid });
       this.playNextAudio();
     } catch (err) {
-      console.error('[TtsAudio] writeFileSync error:', err);
+      log.error('tts_audio writeFileSync error:', err);
       this.emitMessage(EErrorCode.AUDIO_PLAYBACK_ERROR, '[XmovAvatarMP] tts_audio write file failed', String(err));
     }
   }
@@ -885,7 +885,7 @@ export class XmovAvatarMP {
     this.audioAdapter.off('canplay');
     this.audioAdapter.on('ended', cleanup);
     this.audioAdapter.on('error', (err: any) => {
-      console.error('[TtsAudio] InnerAudioContext error:', err, 'path:', item.path);
+      log.error('tts_audio InnerAudioContext error:', err, 'path:', item.path);
       cleanup();
     });
     this.audioAdapter.on('canplay', () => {

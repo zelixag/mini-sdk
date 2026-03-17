@@ -6,6 +6,9 @@
  */
 
 import Pako from 'pako';
+import { createModuleLogger } from '../utils/logger';
+
+const log = createModuleLogger('ResourceManager');
 
 export type TDownloadProgress = (progress: number) => void;
 
@@ -20,7 +23,6 @@ export interface IResourcePack {
 export interface ResourceManagerMPOptions {
   resource_pack: IResourcePack;
   config?: Record<string, any>;
-  onMessage?: (payload: { code: number; message: string; e?: string }) => void;
 }
 
 /** 获取 wx 对象 */
@@ -124,12 +126,10 @@ export class ResourceManagerMP {
   resource_pack: IResourcePack;
   config: Record<string, any>;
   mouthShapeLib: { char_info: any } = { char_info: null };
-  private onMessage?: (p: { code: number; message: string; e?: string }) => void;
 
   constructor(options: ResourceManagerMPOptions) {
     this.resource_pack = options.resource_pack || { body_data_dir: '', face_ani_char_data: '', face_ani_preload_data: '' };
     this.config = options.config || {};
-    this.onMessage = options.onMessage;
   }
 
   /**
@@ -148,11 +148,7 @@ export class ResourceManagerMP {
       this.mouthShapeLib = { char_info: buf };
       onDownloadProgress?.(100);
     } catch (e) {
-      this.onMessage?.({
-        code: 3002,
-        message: 'face_ani_char_data 加载失败',
-        e: String(e)
-      });
+      log.error('face_ani_char_data 加载失败', { code: 3002, error: String(e) });
     }
   }
 
@@ -189,7 +185,7 @@ export class ResourceManagerMP {
     if (pending) return pending;
     const url = this.getVideoUrl(name);
     if (!url) {
-      this.onMessage?.({ code: 40003, message: `视频 URL 为空: ${name}` });
+      log.warn(`视频 URL 为空: ${name}`, { code: 40003 });
       return undefined;
     }
     const promise = wxDownloadToTempFile(url)
@@ -198,11 +194,7 @@ export class ResourceManagerMP {
         return path;
       })
       .catch((e) => {
-        this.onMessage?.({
-          code: 40003,
-          message: `${name} 视频下载失败`,
-          e: String(e)
-        });
+        log.error(`${name} 视频下载失败`, { code: 40003, error: String(e) });
         return undefined;
       })
       .finally(() => {

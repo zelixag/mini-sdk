@@ -13,6 +13,9 @@
 
 import { ErrorHandler, SDKError } from '../utils/ErrorHandler';
 import { EErrorCode } from '../types/error';
+import { createModuleLogger } from '../utils/logger';
+
+const log = createModuleLogger('Canvas');
 
 export interface CanvasAdapterOptions {
   canvasId: string;
@@ -261,7 +264,7 @@ export class CanvasAdapter {
         }
       } catch (err) {
         // 忽略错误
-        (window as any).avatarSDKLogger?.warn?.('[CanvasAdapter] Failed to get canvas size:', err);
+        log.warn('Failed to get canvas size:', err);
       }
     };
 
@@ -304,7 +307,7 @@ export class CanvasAdapter {
           this.webglContext.viewport(0, 0, size.width, size.height);
         }
       }).catch(err => {
-        (window as any).avatarSDKLogger?.warn?.('[CanvasAdapter] Failed to update viewport on show:', err);
+        log.warn('Failed to update viewport on show:', err);
       });
     }
   }

@@ -1,253 +1,65 @@
-<!--数字人小程序示例 - 基础使用-->
+<!-- pages/index/index.wxml -->
 <view class="container">
-  <view class="page-content">
-    <view class="page-hero">
-      <text class="hero-title">客服工作台</text>
-      <text class="hero-sub">数字人像挂件一样驻留在页面角落</text>
-    </view>
-    <view class="page-cards">
-      <view class="page-card">
-        <text class="card-title">今日咨询</text>
-        <text class="card-value">128</text>
-      </view>
-      <view class="page-card">
-        <text class="card-title">平均响应</text>
-        <text class="card-value">2.6s</text>
-      </view>
-      <view class="page-card">
-        <text class="card-title">完成率</text>
-        <text class="card-value">97%</text>
-      </view>
-    </view>
-    <view class="page-feed">
-      <view class="feed-row">
-        <text class="feed-title">新用户咨询接入</text>
-        <text class="feed-time">3 分钟前</text>
-      </view>
-      <view class="feed-row">
-        <text class="feed-title">语音转写完成</text>
-        <text class="feed-time">6 分钟前</text>
-      </view>
-      <view class="feed-row">
-        <text class="feed-title">知识库命中</text>
-        <text class="feed-time">12 分钟前</text>
-      </view>
-    </view>
-  </view>
-  <view class="canvas-container {{widgetMode ? (widgetExpanded ? 'canvas-widget canvas-widget-expanded' : 'canvas-widget') : ''}}">
-    <image class="bg-image" src="{{backgroundImage}}" mode="aspectFill" wx:if="{{backgroundImage}}"></image>
-    <!-- Canvas：可通过 canvasSizeMode 控制占位（全屏/半屏），或自定义宽高 -->
-    <canvas 
-      id="avatar-canvas"
-      type="webgl"
-      class="avatar-canvas {{canvasSizeMode === 'half' ? 'avatar-canvas-half' : ''}}"
-      bindtouchstart="onCanvasTouch"
-      bindtouchmove="onCanvasTouch"
-      bindtouchend="onCanvasTouch"
-    ></canvas>
-    <view class="subtitle-overlay" wx:if="{{showSubtitle && subtitleText}}">
-      <text class="subtitle-text">{{subtitleText}}</text>
-    </view>
-    <view class="widget-bar" wx:if="{{widgetMode}}">
-      <view class="widget-title">
-        <text>数字人</text>
-        <text class="widget-status">{{playState}}</text>
-      </view>
-      <view class="widget-actions">
-        <button class="btn-mini" bindtap="toggleWidgetExpand">{{widgetExpanded ? '收起' : '展开'}}</button>
-        <button class="btn-mini" bindtap="toggleWidgetMode">全屏</button>
-      </view>
-    </view>
-  </view>
+  <!-- 数字人画布 -->
+  <canvas
+    type="webgl2"
+    id="avatar-canvas"
+    class="avatar-canvas"
+    bindtouchstart="handleTouchStart"
+    bindtouchend="handleTouchEnd"
+  ></canvas>
 
-  <!-- 收起时只显示一个「操作」按钮 -->
-  <view class="controls-trigger" wx:if="{{avatarReady && controlsCollapsed}}">
-    <button class="btn-trigger" bindtap="toggleControlsPanel">操作</button>
-  </view>
-  <!-- 展开时显示操作盒 -->
-  <view class="controls-box" wx:if="{{avatarReady && !controlsCollapsed}}">
-    <view class="controls-head">
-      <text class="controls-title">操作</text>
-      <button class="btn-mini" bindtap="toggleControlsPanel">收起</button>
-    </view>
-    <view class="controls-body">
-      <button class="btn" bindtap="toggleAlignPanel">调参</button>
-      <button class="btn" bindtap="toggleWsPanel">监控</button>
-      <button class="btn" bindtap="toggleEventPanel">事件</button>
-      <button class="btn" bindtap="toggleWidgetMode">{{widgetMode ? '全屏' : '挂件'}}</button>
-      <button class="btn" bindtap="setCanvasSizeMode" data-mode="half">半屏</button>
-      <button class="btn" bindtap="setCanvasSizeMode" data-mode="full">全屏</button>
-      <button class="btn" bindtap="startAvatar">开始</button>
-      <button class="btn" bindtap="stopAvatar">停</button>
-      <button class="btn" bindtap="pauseAvatar">暂</button>
-      <button class="btn btn-speak" bindtap="handleSpeak">说</button>
-    </view>
-  </view>
-
-  <view class="align-panel" wx:if="{{avatarReady && !panelCollapsed}}">
-    <view class="panel-head">
-      <view class="panel-title">脸部贴合热调参</view>
-      <button class="mini-btn mini-btn-ghost" bindtap="toggleAlignPanel">收起</button>
+  <!-- 控制面板 -->
+  <view class="control-panel">
+    <!-- 状态显示 -->
+    <view class="status-bar">
+      <text class="status-text">状态: {{status}}</text>
+      <text class="session-text" wx:if="{{sessionId}}">会话: {{sessionId}}</text>
     </view>
 
-    <view class="row">
-      <text class="label">offset_x_px</text>
-      <text class="value">{{faceAlign.offset_x_px}}</text>
-    </view>
-    <view class="hint">微调左右偏移（已自动对齐，通常不用改）</view>
-    <slider class="slider" min="-80" max="80" step="1" value="{{faceAlign.offset_x_px}}" data-key="offset_x_px" bindchanging="onFaceAlignSlider" bindchange="onFaceAlignSlider" />
-
-    <view class="row">
-      <text class="label">offset_y_px</text>
-      <text class="value">{{faceAlign.offset_y_px}}</text>
-    </view>
-    <view class="hint">微调上下偏移（已自动对齐，通常不用改）</view>
-    <slider class="slider" min="-120" max="120" step="1" value="{{faceAlign.offset_y_px}}" data-key="offset_y_px" bindchanging="onFaceAlignSlider" bindchange="onFaceAlignSlider" />
-
-    <view class="row">
-      <text class="label">head_motion_scale</text>
-      <text class="value">{{faceAlign.head_motion_scale}}</text>
-    </view>
-    <view class="hint">头部跟随强度（主要调参项，越大脸跟头越紧）</view>
-    <slider class="slider" min="80" max="350" step="1" value="{{faceAlign.head_motion_scale * 100}}" data-key="head_motion_scale" bindchanging="onFaceAlignSlider" bindchange="onFaceAlignSlider" />
-
-    <view class="row">
-      <text class="label">expr_motion_scale</text>
-      <text class="value">{{faceAlign.expr_motion_scale}}</text>
-    </view>
-    <view class="hint">表情变化强度（越大表情越夸张）</view>
-    <slider class="slider" min="30" max="200" step="1" value="{{faceAlign.expr_motion_scale * 100}}" data-key="expr_motion_scale" bindchanging="onFaceAlignSlider" bindchange="onFaceAlignSlider" />
-
-    <view class="row">
-      <text class="label">eye_extra_scale</text>
-      <text class="value">{{faceAlign.eye_extra_scale}}</text>
-    </view>
-    <view class="hint">眼部独立运动量（越大越灵活但更易漂移）</view>
-    <slider class="slider" min="0" max="120" step="1" value="{{faceAlign.eye_extra_scale * 100}}" data-key="eye_extra_scale" bindchanging="onFaceAlignSlider" bindchange="onFaceAlignSlider" />
-
-    <view class="panel-actions">
-      <button class="mini-btn" bindtap="resetFaceAlign">重置</button>
-      <button class="mini-btn" bindtap="copyFaceAlignConfig">复制参数</button>
+    <!-- 基础控制 -->
+    <view class="btn-row">
+      <button class="btn" bindtap="handleInit" disabled="{{isInitialized}}">初始化</button>
+      <button class="btn" bindtap="handleStart" disabled="{{!isInitialized || isPlaying}}">开始</button>
+      <button class="btn" bindtap="handlePause" disabled="{{!isPlaying}}">暂停</button>
     </view>
 
-    <view class="import-title">导入 JSON（支持 {"face_align": {...}} 或 {...}）</view>
-    <textarea
-      class="import-input"
-      value="{{importJsonText}}"
-      placeholder='粘贴 JSON 后点击「导入参数」'
-      auto-height="true"
-      maxlength="-1"
-      bindinput="onImportJsonInput"
-    />
-    <view class="panel-actions">
-      <button class="mini-btn" bindtap="importFaceAlignConfig">导入参数</button>
+    <!-- 文本输入 -->
+    <view class="input-section">
+      <input
+        class="text-input"
+        placeholder="输入要说的话..."
+        value="{{inputText}}"
+        bindinput="handleInput"
+      />
+      <button class="btn speak-btn" bindtap="handleSpeak" disabled="{{!isPlaying}}">发送</button>
     </view>
-  </view>
 
-  <view class="ws-panel" wx:if="{{avatarReady && !wsPanelCollapsed}}">
-    <view class="panel-head">
-      <view class="panel-title">WebSocket 监控</view>
-      <button class="mini-btn mini-btn-ghost" bindtap="toggleWsPanel">收起</button>
+    <!-- 状态按钮 -->
+    <view class="btn-row">
+      <button class="btn btn-small" bindtap="handleIdle">空闲</button>
+      <button class="btn btn-small" bindtap="handleListen">倾听</button>
+      <button class="btn btn-small" bindtap="handleThink">思考</button>
     </view>
-    <view class="ws-meta">
-      <view class="ws-stat">
-        <text class="ws-label">状态</text>
-        <text class="ws-value">{{wsLastStatus}}</text>
-      </view>
-      <view class="ws-stat">
-        <text class="ws-label">打开</text>
-        <text class="ws-value">{{wsCounters.open}}</text>
-      </view>
-      <view class="ws-stat">
-        <text class="ws-label">关闭</text>
-        <text class="ws-value">{{wsCounters.close}}</text>
-      </view>
-      <view class="ws-stat">
-        <text class="ws-label">错误</text>
-        <text class="ws-value">{{wsCounters.error}}</text>
-      </view>
-      <view class="ws-stat">
-        <text class="ws-label">发送</text>
-        <text class="ws-value">{{wsCounters.send}}</text>
-      </view>
-      <view class="ws-stat">
-        <text class="ws-label">收到</text>
-        <text class="ws-value">{{wsCounters.message}}</text>
-      </view>
-    </view>
-    <view class="ws-controls">
-      <view class="ws-switch">
-        <text class="ws-label">自动拦截</text>
-        <switch checked="{{wsAutoHook}}" bindchange="onWsAutoHookChange" />
-      </view>
-      <view class="ws-switch">
-        <text class="ws-label">自动滚动</text>
-        <switch checked="{{wsAutoScroll}}" bindchange="onWsAutoScrollChange" />
-      </view>
-    </view>
-    <view class="ws-filters">
-      <view class="ws-switch">
-        <text class="ws-label">open</text>
-        <switch checked="{{wsFilters.open}}" data-key="open" bindchange="onWsFilterChange" />
-      </view>
-      <view class="ws-switch">
-        <text class="ws-label">close</text>
-        <switch checked="{{wsFilters.close}}" data-key="close" bindchange="onWsFilterChange" />
-      </view>
-      <view class="ws-switch">
-        <text class="ws-label">error</text>
-        <switch checked="{{wsFilters.error}}" data-key="error" bindchange="onWsFilterChange" />
-      </view>
-      <view class="ws-switch">
-        <text class="ws-label">send</text>
-        <switch checked="{{wsFilters.send}}" data-key="send" bindchange="onWsFilterChange" />
-      </view>
-      <view class="ws-switch">
-        <text class="ws-label">message</text>
-        <switch checked="{{wsFilters.message}}" data-key="message" bindchange="onWsFilterChange" />
-      </view>
-    </view>
-    <scroll-view class="ws-log-list" scroll-y="true" scroll-top="{{wsScrollTop}}">
-      <view class="ws-log" wx:for="{{wsDisplayLogs}}" wx:key="id">
-        <text class="ws-time">{{item.time}}</text>
-        <text class="ws-type ws-type-{{item.type}}">{{item.type}}</text>
-        <text class="ws-socket">{{item.socketId}}</text>
-        <text class="ws-payload">{{item.payload || item.detail}}</text>
-      </view>
-    </scroll-view>
-    <view class="ws-actions">
-      <button class="mini-btn" bindtap="clearWsLogs">清空日志</button>
-    </view>
-  </view>
 
-  <view class="event-panel" wx:if="{{avatarReady && !eventPanelCollapsed}}">
-    <view class="panel-head">
-      <view class="panel-title">事件与音频</view>
-      <button class="mini-btn mini-btn-ghost" bindtap="toggleEventPanel">收起</button>
+    <!-- 音量控制 -->
+    <view class="volume-section">
+      <text class="label">音量: {{volume}}</text>
+      <slider
+        min="0"
+        max="100"
+        value="{{volume * 100}}"
+        bindchange="handleVolumeChange"
+        activeColor="#4CAF50"
+        block-color="#fff"
+        block-size="12"
+      />
     </view>
-    <view class="event-row">
-      <text class="event-label">最近事件</text>
-      <text class="event-value">{{lastEventType || '无'}}</text>
-    </view>
-    <view class="event-row">
-      <text class="event-label">事件时间</text>
-      <text class="event-value">{{lastEventTime || '-'}}</text>
-    </view>
-    <view class="event-row">
-      <text class="event-label">字幕内容</text>
-      <text class="event-value">{{lastSubtitle || '-'}}</text>
-    </view>
-    <view class="event-row">
-      <text class="event-label">音频状态</text>
-      <text class="event-value">{{lastAudioStatus}}</text>
-    </view>
-    <view class="event-row">
-      <text class="event-label">音频错误</text>
-      <text class="event-value">{{lastAudioError || '-'}}</text>
-    </view>
-  </view>
 
-  <view class="status" wx:if="{{!avatarReady}}">
-    <text>正在初始化...</text>
+    <!-- 销毁按钮 -->
+    <view class="btn-row">
+      <button class="btn btn-danger" bindtap="handleStop" disabled="{{!isPlaying}}">停止</button>
+      <button class="btn btn-danger" bindtap="handleDestroy">销毁</button>
+    </view>
   </view>
 </view>
