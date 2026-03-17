@@ -290,8 +290,8 @@ export class XmovAvatarMP {
       return null;
     }
     const uniqueSpeakId = `mp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const sessionSpeakReqId = ((this as any)._speakIdSeq || 0);
-    (this as any)._speakIdSeq = sessionSpeakReqId;
+    (this as any)._speakIdSeq = ((this as any)._speakIdSeq || 0) + 1;
+    const sessionSpeakReqId = (this as any)._speakIdSeq;
 
     const pitch = options?.pitch ?? '1';
     const speed = options?.speed ?? '1';
