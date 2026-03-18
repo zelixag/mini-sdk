@@ -1,28 +1,36 @@
-[DIAG][GLPipeline] renderFrame bswLen=236 nonZero=57 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1357 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=161 bodyId=10 pipeline=true realQ=1726 facialQ=0 hasBodyChunk=true lastValid=true
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=31 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1561 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=221 bodyId=10 pipeline=true realQ=1726 facialQ=0 hasBodyChunk=true lastValid=true
+[XMOV AVATAR MINIPROGRAM] [BodyRenderer] [INFO] decoder capability seekToNextFrame=false, seek=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=121 bodyId=10 pipeline=false realQ=139 facialQ=0 hasBodyChunk=true lastValid=false
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=181 bodyId=10 pipeline=false realQ=111 facialQ=0 hasBodyChunk=true lastValid=false
 servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=281 bodyId=10 pipeline=true realQ=1726 facialQ=0 hasBodyChunk=true lastValid=true
+servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [AvatarRenderer] [INFO] GLPipeline initialized successfully
+servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [WebSocketAdapter] [WARN] binaryQueue head timeout, dropping: face_data expected: 1 got: 0
+value @ servicewechat.com:1
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=27 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1357 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=241 bodyId=10 pipeline=true realQ=407 facialQ=0 hasBodyChunk=true lastValid=true
 servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=341 bodyId=23 pipeline=true realQ=1718 facialQ=0 hasBodyChunk=true lastValid=true
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=55 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1561 charLoaded=true bsw[0..4]=[0.000,0.001,0.000,0.000,0.000]
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=401 bodyId=23 pipeline=true realQ=1730 facialQ=0 hasBodyChunk=true lastValid=true
-index.js? [sm]:337 Speaking: 你好意思么你的钱还不
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=301 bodyId=23 pipeline=true realQ=395 facialQ=0 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=361 bodyId=23 pipeline=true realQ=415 facialQ=0 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=55 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1470 charLoaded=true bsw[0..4]=[0.000,0.001,0.000,0.000,0.000]
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=421 bodyId=23 pipeline=true realQ=415 facialQ=0 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=481 bodyId=23 pipeline=true realQ=415 facialQ=0 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=541 bodyId=34 pipeline=true realQ=423 facialQ=0 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=58 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1470 charLoaded=true bsw[0..4]=[0.000,0.027,0.000,0.000,0.000]
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=601 bodyId=34 pipeline=true realQ=411 facialQ=0 hasBodyChunk=true lastValid=true
+3servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
+index.js? [sm]:337 Speaking: 你上海电话回电话哈觉得结婚的
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=661 bodyId=34 pipeline=true realQ=423 facialQ=0 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=25 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1470 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
+servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [SDK] [INFO] state_change from server: {"start_frame":996,"state":"speak","params":{"request_state_id":1,"client_speak_id":"0-6372-96b53cdb4afe43689cfa23911d55084f"},"mapping":false}
+servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [SDK] [INFO] state_change from server: {"start_frame":1076,"state":"interactive_idle","params":{"request_state_id":1,"client_speak_id":"0-6372-96b53cdb4afe43689cfa23911d55084f"},"mapping":false}
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=721 bodyId=34 pipeline=true realQ=523 facialQ=80 hasBodyChunk=true lastValid=true
 servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [SDK] [INFO] state_change from server: {"start_frame":1173,"state":"speak","params":{"request_state_id":1,"client_speak_id":"0-11958-c71a059003b84085b5108e068c9547ca"},"mapping":false}
-servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [SDK] [INFO] state_change from server: {"start_frame":1234,"state":"interactive_idle","params":{"request_state_id":1,"client_speak_id":"0-11958-c71a059003b84085b5108e068c9547ca"},"mapping":false}
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=461 bodyId=23 pipeline=true realQ=1872 facialQ=61 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=781 bodyId=45 pipeline=true realQ=524 facialQ=80 hasBodyChunk=true lastValid=true
 servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=521 bodyId=34 pipeline=true realQ=1856 facialQ=61 hasBodyChunk=true lastValid=true
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=57 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1561 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=581 bodyId=34 pipeline=true realQ=1877 facialQ=61 hasBodyChunk=true lastValid=true
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=641 bodyId=34 pipeline=true realQ=1912 facialQ=61 hasBodyChunk=true lastValid=true
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=701 bodyId=34 pipeline=true realQ=1912 facialQ=61 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=57 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1470 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
 servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=35 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1561 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
-servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=761 bodyId=45 pipeline=true realQ=1908 facialQ=61 hasBodyChunk=true lastValid=true
-servicewechat.com:1 [XMOV AVATAR MINIPROGRAM] [Scheduler] [INFO] Using requestAnimationFrame (global)
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=821 bodyId=45 pipeline=true realQ=1904 facialQ=61 hasBodyChunk=true lastValid=true
-xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=27 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1561 charLoaded=true bsw[0..4]=[
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=841 bodyId=45 pipeline=true realQ=523 facialQ=80 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=42 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1470 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=901 bodyId=45 pipeline=true realQ=531 facialQ=80 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=961 bodyId=45 pipeline=true realQ=519 facialQ=80 hasBodyChunk=true lastValid=true
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][GLPipeline] renderFrame bswLen=236 nonZero=56 joints=7 bodyW=2160 bodyH=1920 canvasW=1179 canvasH=1470 charLoaded=true bsw[0..4]=[0.000,0.000,0.000,0.000,0.000]
+xmov-avatar-mp.heavy.js? [sm]:1 [DIAG][AvatarRenderer] render frame=1021 bodyId=56 pipeline=true realQ=522 facialQ=55 hasBodyChunk=true lastValid=true
