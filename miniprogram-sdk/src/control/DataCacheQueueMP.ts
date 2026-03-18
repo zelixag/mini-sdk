@@ -71,11 +71,18 @@ export class DataCacheQueueMP {
     return null;
   }
 
-  /** 获取最新的 face 数据（忽略 bodyId 和 frameIndex 范围，用于无精确匹配时的兜底） */
+  /** 获取最新的 face 数据（忽略 bodyId 和 frameIndex 范围，用于无精确匹配时的兜底）
+   *  关键：优先返回两个队列中 ef 更大的（即更新的数据）
+   *  speak 时 lipsync 数据在 facialQueue（type=1），如果 facialQueue 有更新的数据应该优先使用
+   */
   getLatestFaceData(): IAlignedFaceFrameData | null {
-    if (this.realFacialQueue.length > 0) return this.realFacialQueue[this.realFacialQueue.length - 1];
-    if (this.facialQueue.length > 0) return this.facialQueue[this.facialQueue.length - 1];
-    return null;
+    const realLast = this.realFacialQueue.length > 0 ? this.realFacialQueue[this.realFacialQueue.length - 1] : null;
+    const facialLast = this.facialQueue.length > 0 ? this.facialQueue[this.facialQueue.length - 1] : null;
+    if (realLast && facialLast) {
+      // 返回 ef 更大的（更新的数据），speak 时 facialQueue 有 lipsync 数据会胜出
+      return (facialLast.ef ?? 0) >= (realLast.ef ?? 0) ? facialLast : realLast;
+    }
+    return realLast || facialLast || null;
   }
 
   /** 清理过期 face 数据（ef < frameIndex） */
