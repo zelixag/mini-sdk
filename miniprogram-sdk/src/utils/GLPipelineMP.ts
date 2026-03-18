@@ -453,7 +453,7 @@ export class GLPipelineMP {
     this.meshInfos = [];
     for (let mesh_index = 0; mesh_index < char.mesh.length; mesh_index++) {
       let currentMeshInfo: MeshInfo = {
-        VAO: this.device.gl.createVertexArray(),
+        VAO: null, // W8: 不创建 VAO（小程序手动绑定 attribute，VAO 从未使用）
         buffers: {},
         textures: {},
         texturePCAModels: [],
@@ -1188,6 +1188,7 @@ export class GLPipelineMP {
       const bsw = frame.blendshapeWeights;
       const nonZero = bsw ? Array.from(bsw).filter(v => Math.abs(v) > 0.01).length : 0;
       const joints = frame.movableJointTransforms;
+      const t = this.charData?.transform;
       console.log('[DIAG][GLPipeline] renderFrame',
         'bswLen=' + (bsw?.length || 0),
         'nonZero=' + nonZero,
@@ -1196,7 +1197,10 @@ export class GLPipelineMP {
         'canvasW=' + this.device.gl.drawingBufferWidth,
         'canvasH=' + this.device.gl.drawingBufferHeight,
         'charLoaded=' + !!(this.charData?.char),
-        bsw ? 'bsw[0..4]=[' + Array.from(bsw).slice(0, 5).map(v => v.toFixed(3)).join(',') + ']' : 'bsw=null'
+        bsw ? 'bsw[0..4]=[' + Array.from(bsw).slice(0, 5).map(v => v.toFixed(3)).join(',') + ']' : 'bsw=null',
+        t ? 'transform={sX=' + t.scaleX.toFixed(3) + ',sY=' + t.scaleY.toFixed(3) + ',oX=' + t.offsetX.toFixed(3) + ',oY=' + t.offsetY.toFixed(3) + '}' : 'transform=null',
+        // 嘴型相关 blendshape 诊断：打印前 20 个中有值的位置
+        bsw ? 'bswNonZeroIdx=[' + Array.from(bsw).map((v, i) => Math.abs(v) > 0.01 ? i : -1).filter(i => i >= 0).slice(0, 20).join(',') + ']' : ''
       );
     }
 

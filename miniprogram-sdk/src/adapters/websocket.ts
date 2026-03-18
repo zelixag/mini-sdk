@@ -83,23 +83,26 @@ function parseEngineIOPacket(raw: string): {
     }
 
     if (subType === '2') {
-      // console.log('[WebSocket] Parsing EVENT packet:', rest);
       try {
-        // 尝试匹配 ackId: 42 + ackId + [...]
-        // 正则：^2(\d+)(\[.*)$  或者 ^2(\[.*)$
-        // 注意：rest 是去掉 '4' 之后的，所以开头是 subType (2)
-        const matchAck = /^2(\d+)(\[.*)$/s.exec(rest);
+        // S4: 剥离可能的命名空间前缀 42/nsp,["event",data]
+        let body = rest.slice(1); // 去掉 '2'
+        if (body.startsWith('/')) {
+          const commaIdx = body.indexOf(',');
+          if (commaIdx !== -1) body = body.slice(commaIdx + 1);
+        }
+
+        // 尝试匹配 ackId: ackId + [...]
+        const matchAck = /^(\d+)(\[.*)$/s.exec(body);
         if (matchAck) {
             const ackId = parseInt(matchAck[1], 10);
             const arr = JSON.parse(matchAck[2]) as any[];
             const eventName = arr && arr[0];
             const payload = arr && arr.length > 1 ? arr[1] : undefined;
-            // console.log('[WebSocket] Parsed EVENT with Ack:', eventName, ackId);
             return { type: 'message', emitEvent: eventName, emitPayload: payload, id: ackId };
         }
 
-        // 无 ackId: 42[...]
-        const arr = JSON.parse(rest.slice(1)) as any[];
+        // 无 ackId: [...]
+        const arr = JSON.parse(body) as any[];
         const eventName = arr && arr[0];
         const payload = arr && arr.length > 1 ? arr[1] : undefined;
         // console.log('[WebSocket] Parsed EVENT:', eventName);
@@ -110,7 +113,13 @@ function parseEngineIOPacket(raw: string): {
       }
     }
     if (rest.charAt(0) === '5') {
-      const match = /^5(\d+)-(.+)$/s.exec(rest);
+      // S4: 剥离可能的命名空间前缀 45/nsp,1-["event",data]
+      let binaryBody = rest.slice(1); // 去掉 '5'
+      if (binaryBody.startsWith('/')) {
+        const commaIdx = binaryBody.indexOf(',');
+        if (commaIdx !== -1) binaryBody = binaryBody.slice(commaIdx + 1);
+      }
+      const match = /^(\d+)-(.+)$/s.exec(binaryBody);
       if (match) {
         try {
           const attachments = parseInt(match[1], 10);

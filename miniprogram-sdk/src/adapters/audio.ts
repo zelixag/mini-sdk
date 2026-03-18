@@ -198,10 +198,12 @@ export class AudioAdapter {
    */
   set volume(value: number) {
     const clampedValue = Math.max(0, Math.min(1, value));
+    this._volume = clampedValue;
     this.targetVolume = clampedValue;
-    
-    // 启动平滑音量变化
-    this._animateVolume();
+    // A10: TTS 场景不需要平滑过渡，直接设置避免段切换时音量波动
+    if (this.audioContext) {
+      this.audioContext.volume = clampedValue;
+    }
   }
 
   /**
