@@ -289,18 +289,39 @@ export class AvatarRendererMP {
    *  speak 时 lipsync 数据在 facialQueue（face_frame_type=1），必须优先于
    *  realFacialQueue 中旧的视频追踪数据，否则嘴型永远不动。 */
   private _findFaceData(frameIndex: number, bodyId: number) {
-    // 同时查两个队列，取 ef 更大的（更新的数据优先）
     const realData = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
     const facialData = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
     let data = this._pickNewerFaceData(realData, facialData);
+    let source = data ? (data === realData ? 'real-exact' : 'facial-exact') : '';
 
     if (!data && bodyId !== 0) {
       const realData0 = this.dataCacheQueue.getRealFaceData(frameIndex, 0);
       const facialData0 = this.dataCacheQueue.getFaceData(frameIndex, 0);
       data = this._pickNewerFaceData(realData0, facialData0);
+      if (data) source = data === realData0 ? 'real-bid0' : 'facial-bid0';
     }
-    // 终极兜底：timelineFrameIndex 与服务端 sf/ef 不对齐时用最新数据
-    if (!data) data = this.dataCacheQueue.getLatestFaceData();
+    if (!data) {
+      data = this.dataCacheQueue.getLatestFaceData();
+      if (data) source = 'latest-fallback';
+    }
+
+    // 诊断：每 30 帧打一次，只打不改逻辑
+    if (this._diagRenderCount % 30 === 1 && data) {
+      const gap = frameIndex - (data.sf ?? 0);
+      console.log('[DIAG][_findFaceData]',
+        'frame=' + frameIndex,
+        'bodyId=' + bodyId,
+        'source=' + source,
+        'face_sf=' + (data.sf ?? '?'),
+        'face_ef=' + (data.ef ?? '?'),
+        'face_bid=' + (data.body_id ?? '?'),
+        'face_type=' + (data.face_frame_type ?? '?'),
+        'gap=' + gap,
+        'bswLen=' + (data.FaceFrameData?.blendshapeWeights?.length ?? 0),
+        'meshBswLen=' + (data.FaceFrameData?.mesh?.[0]?.blendshapeWeights?.length ?? 0)
+      );
+    }
+
     return data;
   }
 
