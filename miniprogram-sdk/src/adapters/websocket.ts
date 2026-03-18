@@ -182,7 +182,7 @@ export class MiniProgramWebSocket {
 
   /** Socket.IO 二进制事件队列：支持服务端并发下发多个二进制事件头（face_data + tts_audio 同时进行）
    * 每条记录对应一个等待收齐附件的二进制事件，按到达顺序排队，每个二进制帧分配给队首 */
-  private binaryQueue: Array<{ attachments: number; emitEvent: string; emitPayload: any; buffers: ArrayBuffer[] }> = [];
+  private binaryQueue: Array<{ attachments: number; emitEvent: string; emitPayload: any; buffers: ArrayBuffer[]; createdAt: number }> = [];
   private errorHandler: ErrorHandler;
 
   // 客户端心跳：检测死连接（服务端可能不发 ping 或网络已中断但 onClose 未触发）
@@ -274,12 +274,10 @@ export class MiniProgramWebSocket {
       }
 
       this.socketTask.onOpen(() => {
-        // 注意：这里不设置 connected = true，因为 Engine.IO 握手还没完成
-        // 只有在收到服务端的 open 包时才算真正连接成功（见 _handleSocketMessage）
-        // 这样可以避免在握手完成前发送消息导致 "SocketTask.readyState is not OPEN" 错误
-
-        // 检查 readyState，握手完成后会收到 Engine.IO 'open' 包
-        // 此时 Socket.IO 的 send() 会把消息加入队列，等收到 'open' 后再发送
+        // S5: 重连时清空残留状态，防止旧连接的二进制事件/ack 回调污染新连接
+        this.binaryQueue = [];
+        this.acks.clear();
+        this.messageQueue = [];
       });
 
       this.socketTask.onMessage((res: WechatMiniprogram.SocketMessageCallbackResult) => {
@@ -346,6 +344,10 @@ export class MiniProgramWebSocket {
             this.reconnectAttempts = 0;
             this.id = Math.random().toString(36).substring(7);
 
+            // S5: 重连时清空残留状态，防止旧连接的 pending 事件干扰新连接
+            this.binaryQueue = [];
+            this.acks.clear();
+
             // 启动客户端心跳检测
             this._startHeartbeat();
 
@@ -380,11 +382,13 @@ export class MiniProgramWebSocket {
             if (packet.binaryEvent && packet.attachments != null && packet.attachments > 0) {
               // 二进制事件：加入队列等待收齐所有附件
               // 使用队列而非单对象，防止服务端并发下发多个二进制头（如 face_data + tts_audio 交叉）时覆盖
+              // S3: 加入 createdAt 用于超时清理
               this.binaryQueue.push({
                 attachments: packet.attachments,
                 emitEvent: packet.emitEvent,
                 emitPayload: packet.emitPayload,
                 buffers: [],
+                createdAt: Date.now(),
               });
               return;
             }
@@ -432,6 +436,11 @@ export class MiniProgramWebSocket {
         return;
       }
       if (res.data instanceof ArrayBuffer) {
+        // S3: 超时清理 — 队首等待超过 5 秒说明数据帧丢失，丢弃以防阻塞后续事件
+        while (this.binaryQueue.length > 0 && Date.now() - this.binaryQueue[0].createdAt > 5000) {
+          const stale = this.binaryQueue.shift()!;
+          log.warn('binaryQueue head timeout, dropping:', stale.emitEvent, 'expected:', stale.attachments, 'got:', stale.buffers.length);
+        }
         if (this.binaryQueue.length > 0) {
           // 分配给队首的待收事件
           const pending = this.binaryQueue[0];

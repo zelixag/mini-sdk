@@ -853,6 +853,9 @@ export class GLPipelineMP {
       }
     }
 
+    // W5: 声明 blendshape 偏移量变量（修复隐式全局变量，严格模式下 ReferenceError）
+    let ub_rig_info_data_offset = 0;
+
     // render mask
     this.device.gl.bindFramebuffer(this.device.gl.FRAMEBUFFER, this.FrameBuffer_MSAA);
     this.device.gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -863,16 +866,12 @@ export class GLPipelineMP {
     this.device.gl.uniformMatrix4fv(this.maskPipelineInfo!.progUniforms['u_proj_mat'], true, proj_mat);
     this.device.gl.uniformMatrix2fv(this.maskPipelineInfo!.progUniforms['u_transform_2d'], false, transform_2d_mat);
     
-    // 上传骨骼数据到 Mask Pass
+    // 上传骨骼数据到 Mask Pass（仅骨骼矩阵，blendshape 权重在 per-mesh 循环内更新）
+    // W3 修复：移除循环外的 blendshape 预上传，避免第一个 genMask mesh 被 skip 时使用旧权重
     {
       const matrixDataSize = this.meshStatistics.max_bones * 16;
       const matrixData = this._ub_rig_info_data.subarray(0, matrixDataSize);
       this.device.gl.uniformMatrix4fv(this.maskPipelineInfo.progUniforms['u_joint_matrices'], false, matrixData);
-      
-      if (this.meshStatistics.max_bs_count > 0) {
-         const weightData = this._ub_rig_info_data.subarray(matrixDataSize);
-         this.device.gl.uniform4fv(this.maskPipelineInfo.progUniforms['u_bs_weights'], weightData);
-      }
     }
 
     for (let mesh_index = 0; mesh_index < char.mesh.length; mesh_index++) {
@@ -976,6 +975,14 @@ export class GLPipelineMP {
       const currentMeshInfo = this.meshInfos[mesh_index];
       let PCAModel = currentMeshInfo.texturePCAModels[frame_data.mesh[mesh_index].textureModelIndex];
 
+      // W1: 非 genMask mesh（眼球/口腔）加深度偏移，确保面部皮肤在深度测试中优先
+      // 防止头部大幅运动时眼球从面部皮肤缝隙中漏出
+      const isNonMaskMesh = !char.mesh[mesh_index].genMask;
+      if (isNonMaskMesh) {
+        this.device.gl.enable(this.device.gl.POLYGON_OFFSET_FILL);
+        this.device.gl.polygonOffset(1.0, 1.0);
+      }
+
       if (char.mesh[mesh_index].blendshapes.size[0] > 1) {
         ub_rig_info_data_offset = this.meshStatistics.max_bones * 16;
         let effective_bs_count = Math.min(char.mesh[mesh_index].blendshapeIndices.length - 1, this.meshStatistics.max_bs_count);
@@ -1070,6 +1077,11 @@ export class GLPipelineMP {
         this.device.gl.bindTexture(this.device.gl.TEXTURE_3D, this.LUTTexture);
       }
       this.device.gl.drawElements(this.device.gl.TRIANGLES, char.mesh[mesh_index].triangles.itemSize(), this.device.getGLArrayElementType(char.mesh[mesh_index].triangles.data)!, 0);
+
+      // W1: 关闭深度偏移
+      if (isNonMaskMesh) {
+        this.device.gl.disable(this.device.gl.POLYGON_OFFSET_FILL);
+      }
     }
 
     this.device.gl.bindFramebuffer(this.device.gl.DRAW_FRAMEBUFFER, this.FrameBuffer_meshColor);
