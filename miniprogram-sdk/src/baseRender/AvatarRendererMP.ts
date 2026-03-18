@@ -211,11 +211,27 @@ export class AvatarRendererMP {
   }
 
   /** 渲染指定帧（由 RenderScheduler 驱动） */
+  private _diagRenderCount = 0;
+
   render(frameIndex: number): void {
     if (!this.isInit) return;
 
     const bodyChunk = this.bodyRenderer.findBodyChunk(frameIndex) as any;
     const bodyId = bodyChunk?.body_id || 0;
+
+    // 诊断日志：每 60 帧打一次渲染状态
+    if (++this._diagRenderCount % 60 === 1) {
+      const rqLen = (this.dataCacheQueue as any).realFacialQueue?.length ?? -1;
+      const fqLen = (this.dataCacheQueue as any).facialQueue?.length ?? -1;
+      console.log('[DIAG][AvatarRenderer] render',
+        'frame=' + frameIndex,
+        'bodyId=' + bodyId,
+        'pipeline=' + !!this.pipeline,
+        'realQ=' + rqLen, 'facialQ=' + fqLen,
+        'hasBodyChunk=' + !!bodyChunk,
+        'lastValid=' + !!this.lastValidFaceData
+      );
+    }
 
     if (this.pipeline) {
       // GLPipeline 路径：face mesh + body 融合渲染

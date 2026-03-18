@@ -1183,12 +1183,29 @@ export class GLPipelineMP {
   ) {
     this.autoComputeTransform(imageWidth, imageHeight);
 
+    // 诊断日志：每 60 帧打一次 face 数据摘要
+    if (frame && (this._diagFrameCount = (this._diagFrameCount || 0) + 1) % 60 === 1) {
+      const bsw = frame.blendshapeWeights;
+      const nonZero = bsw ? Array.from(bsw).filter(v => Math.abs(v) > 0.01).length : 0;
+      const joints = frame.movableJointTransforms;
+      console.log('[DIAG][GLPipeline] renderFrame',
+        'bswLen=' + (bsw?.length || 0),
+        'nonZero=' + nonZero,
+        'joints=' + (joints?.length || 0),
+        'bodyW=' + imageWidth, 'bodyH=' + imageHeight,
+        'canvasW=' + this.device.gl.drawingBufferWidth,
+        'canvasH=' + this.device.gl.drawingBufferHeight,
+        'charLoaded=' + !!(this.charData?.char),
+        bsw ? 'bsw[0..4]=[' + Array.from(bsw).slice(0, 5).map(v => v.toFixed(3)).join(',') + ']' : 'bsw=null'
+      );
+    }
+
     this.initFrame();
     if (null !== this.charData && null !== this.charData.char && frame){
         this.renderMesh(this.charData!, frame, imageWidth, imageHeight);
     }
     this.renderBackground(background, image as ArrayBuffer, transform ?? (null === this.charData ? null : this.charData.transform), imageWidth, imageHeight);
-    
+
     this.device.gl.flush();
   }
 

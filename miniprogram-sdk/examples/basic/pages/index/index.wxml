@@ -112,13 +112,24 @@
           </view>
         </view>
 
-        <!-- 数据流日志 -->
+        <!-- 数据筛选 -->
+        <view class="ws-filters">
+          <text class="ws-filter {{wsFilter === 'all' ? 'ws-filter-active' : ''}}" bindtap="setWsFilter" data-filter="all">全部</text>
+          <text class="ws-filter {{wsFilter === 'speak' ? 'ws-filter-active' : ''}}" bindtap="setWsFilter" data-filter="speak">speak</text>
+          <text class="ws-filter {{wsFilter === 'data' ? 'ws-filter-active' : ''}}" bindtap="setWsFilter" data-filter="data">face/body</text>
+          <text class="ws-filter {{wsFilter === 'conn' ? 'ws-filter-active' : ''}}" bindtap="setWsFilter" data-filter="conn">连接</text>
+          <text class="ws-filter {{wsFilter === 'diag' ? 'ws-filter-active' : ''}}" bindtap="setWsFilter" data-filter="diag">诊断</text>
+        </view>
+
+        <!-- 数据流日志（按筛选显示） -->
         <scroll-view class="ws-log-list" scroll-y scroll-into-view="{{wsScrollAnchor}}" enhanced show-scrollbar="{{false}}">
-          <view class="ws-log" wx:for="{{wsLogs}}" wx:key="id" id="ws-{{item.id}}">
-            <text class="ws-log-time">{{item.time}}</text>
-            <text class="ws-log-tag ws-tag-{{item.tag}}">{{item.tag}}</text>
-            <text class="ws-log-msg">{{item.msg}}</text>
-          </view>
+          <block wx:for="{{wsLogs}}" wx:key="id">
+            <view class="ws-log" wx:if="{{item.show}}" id="ws-{{item.id}}">
+              <text class="ws-log-time">{{item.time}}</text>
+              <text class="ws-log-tag ws-tag-{{item.tag}}">{{item.tag}}</text>
+              <text class="ws-log-msg">{{item.msg}}</text>
+            </view>
+          </block>
           <view id="ws-bottom"></view>
         </scroll-view>
 

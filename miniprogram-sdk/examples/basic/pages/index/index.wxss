@@ -240,6 +240,26 @@
 .ws-tag-conn { background-color: #10b981; }
 .ws-tag-err { background-color: #ef4444; }
 .ws-tag-send { background-color: #3b82f6; }
+.ws-tag-diag { background-color: #14b8a6; }
+
+/* 筛选按钮 */
+.ws-filters {
+  display: flex;
+  gap: 8rpx;
+  padding: 8rpx 0;
+  flex-wrap: wrap;
+}
+.ws-filter {
+  font-size: 20rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  background-color: #333;
+  color: #888;
+}
+.ws-filter-active {
+  background-color: #4CAF50;
+  color: #fff;
+}
 
 .ws-log-msg {
   color: #aaa;

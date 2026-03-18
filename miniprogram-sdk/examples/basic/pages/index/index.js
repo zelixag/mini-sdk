@@ -65,7 +65,8 @@ Page({
     wsStatusText: '未连接',
     wsCounters: { message: 0, send: 0, reconnect: 0 },
     wsLogs: [],
-    wsScrollAnchor: ''
+    wsScrollAnchor: '',
+    wsFilter: 'all'  // all | speak | data | conn | diag
   },
 
   // SDK 实例
@@ -212,23 +213,39 @@ Page({
       onFaceData: (data) => {
         const count = Array.isArray(data) ? data.length : 0;
         this.wsCounterInc('message');
-        this.addWsLog('face', 'face_data x' + count + (data?.[0] ? ' sf=' + data[0].sf : ''));
+        this.addWsLog('face', 'face_data x' + count + (data?.[0] ? ' sf=' + data[0].sf + ' ef=' + data[0].ef : ''));
+        // 诊断：face 数据详情（每 10 次打一次）
+        if (count > 0 && (this._faceLogCount = (this._faceLogCount || 0) + 1) % 10 === 1) {
+          const f = data[0];
+          const bsw = f?.FaceFrameData?.blendshapeWeights || f?.bsw || [];
+          const bswArr = Array.isArray(bsw) ? bsw : (bsw.length ? Array.from(bsw).slice(0, 5) : []);
+          const nonZero = (Array.isArray(bsw) ? bsw : Array.from(bsw || [])).filter(v => Math.abs(v) > 0.01).length;
+          this.addWsLog('diag', 'face: type=' + (f?.face_frame_type ?? '?') +
+            ' bid=' + (f?.body_id ?? '?') +
+            ' bswLen=' + (bsw.length || 0) +
+            ' nonZero=' + nonZero +
+            ' sample=[' + bswArr.map(v => v?.toFixed?.(3) ?? v).join(',') + ']');
+        }
       },
       onBodyData: (data) => {
         const count = Array.isArray(data) ? data.length : 0;
         this.wsCounterInc('message');
-        this.addWsLog('body', 'body_data x' + count + (data?.[0]?.n ? ' ' + data[0].n : ''));
+        this.addWsLog('body', 'body_data x' + count + (data?.[0]?.n ? ' ' + data[0].n : '') +
+          (data?.[0] ? ' bid=' + (data[0].body_id ?? '?') + ' sf=' + (data[0].sf ?? '?') : ''));
       },
       onTtsAudio: (frames) => {
         const first = Array.isArray(frames) ? frames[0] : frames;
         this.wsCounterInc('message');
-        this.addWsLog('audio', 'tts_audio sid=' + (first?.sid ?? '?'));
+        this.addWsLog('audio', 'tts_audio sid=' + (first?.sid ?? '?') +
+          ' chunks=' + (Array.isArray(frames) ? frames.length : 1) +
+          (first?.ad ? ' bytes=' + (first.ad.byteLength || first.ad.length || '?') : ''));
       },
       onEventData: (events) => {
         this.wsCounterInc('message');
         for (const frame of events || []) {
           for (const item of (frame.e || [])) {
-            this.addWsLog('event', item.type + (item.text ? ': ' + item.text : ''));
+            this.addWsLog('event', item.type + (item.text ? ': ' + item.text : '') +
+              (item.data ? ' ' + JSON.stringify(item.data).substring(0, 80) : ''));
           }
         }
       }
@@ -385,13 +402,38 @@ Page({
     return `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}.${String(t.getMilliseconds()).padStart(3,'0')}`;
   },
 
+  // 筛选规则：tag → 分组
+  _tagGroup(tag) {
+    if (tag === 'send' || tag === 'audio' || tag === 'event') return 'speak';
+    if (tag === 'face' || tag === 'body') return 'data';
+    if (tag === 'conn' || tag === 'err') return 'conn';
+    if (tag === 'diag') return 'diag';
+    return 'all';
+  },
+
+  _matchFilter(tag, filter) {
+    if (filter === 'all') return true;
+    return this._tagGroup(tag) === filter;
+  },
+
+  setWsFilter(e) {
+    const filter = e.currentTarget.dataset.filter;
+    // 重新计算 show 标志
+    const logs = this.data.wsLogs.map(item => ({
+      ...item,
+      show: this._matchFilter(item.tag, filter)
+    }));
+    this.setData({ wsFilter: filter, wsLogs: logs });
+  },
+
   addWsLog(tag, msg) {
     const id = ++this._wsLogId;
-    const item = { id, time: this._stamp(), tag, msg };
-    const logs = [item, ...this.data.wsLogs].slice(0, 150);
+    const show = this._matchFilter(tag, this.data.wsFilter);
+    const item = { id, time: this._stamp(), tag, msg, show };
+    const logs = [item, ...this.data.wsLogs].slice(0, 200);
     this.setData({
       wsLogs: logs,
-      wsScrollAnchor: 'ws-' + id
+      wsScrollAnchor: show ? 'ws-' + id : this.data.wsScrollAnchor
     });
   },
 
