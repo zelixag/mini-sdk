@@ -181,6 +181,7 @@ export class XmovAvatarMP {
 
   destroy(): boolean {
     this.clearAudioQueue();
+    this.cleanupTempAudioFiles(); // A9: 清理残留临时文件
     this.renderScheduler?.destroy();
     this.avatarRenderer?.destroy();
     this.audioAdapter?.destroy();
@@ -294,7 +295,8 @@ export class XmovAvatarMP {
     // 额外发可能导致服务端状态机竞态（interactive_idle 和 send_text 几乎同时到达）
     this.clearAudioQueue();
 
-    const result = this.sendText(ssml, { isStart: is_start, isEnd: is_end });
+    // S9 修复：透传 extra 参数到 sendText（对齐 Web SDK）
+    const result = this.sendText(ssml, { isStart: is_start, isEnd: is_end, extra });
     return result;
   }
 
@@ -302,7 +304,7 @@ export class XmovAvatarMP {
    * 发送文本驱动 TTS（上行 send_text）
    * 需在 TTSA 连接就绪后调用
    */
-  sendText(text: string, options?: { isStart?: boolean; isEnd?: boolean; pitch?: string; speed?: string; volume?: string }): string | null {
+  sendText(text: string, options?: { isStart?: boolean; isEnd?: boolean; pitch?: string; speed?: string; volume?: string; extra?: { client_speak_id: string } }): string | null {
     const socket = this.ttsaSocket;
     if (!socket?.connected) {
       log.error('sendText: socket 未连接');
@@ -344,7 +346,7 @@ export class XmovAvatarMP {
       ssml,
       is_start: options?.isStart ?? true,
       is_end: options?.isEnd ?? true,
-      extra: { client_speak_id: uniqueSpeakId },
+      extra: { client_speak_id: options?.extra?.client_speak_id || uniqueSpeakId },
       multi_turn_conversation_id: uniqueSpeakId,
       session_speak_req_id: sessionSpeakReqId,
     };

@@ -737,7 +737,15 @@ export class GLPipelineMP {
 
     this._renderMeshCallCount++;
 
-    let proj_mat = new Float32Array(flatten(mmul(char.cameraConfig.getProjMatrix([projW, projH], 200, 800), char.cameraConfig.getExtrinsicMatrix())));
+    let proj_mat_raw = new Float32Array(flatten(mmul(char.cameraConfig.getProjMatrix([projW, projH], 200, 800), char.cameraConfig.getExtrinsicMatrix())));
+    // W1 修复：CPU 端预转置投影矩阵，避免 uniformMatrix4fv(transpose=true)
+    // 小程序 WebGL 可能降级到 WebGL1，transpose=true 不被支持
+    let proj_mat = new Float32Array(16);
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        proj_mat[r * 4 + c] = proj_mat_raw[c * 4 + r];
+      }
+    }
 
     // Fine-tune face mesh alignment in NDC space.
     // +X = shift right, -X = shift left  (1.0 NDC = half canvas width)
@@ -863,7 +871,7 @@ export class GLPipelineMP {
     this.device.gl.clear(this.device.gl.COLOR_BUFFER_BIT | this.device.gl.DEPTH_BUFFER_BIT);
 
     this.device.gl.useProgram(this.maskPipelineInfo!.program);
-    this.device.gl.uniformMatrix4fv(this.maskPipelineInfo!.progUniforms['u_proj_mat'], true, proj_mat);
+    this.device.gl.uniformMatrix4fv(this.maskPipelineInfo!.progUniforms['u_proj_mat'], false, proj_mat);
     this.device.gl.uniformMatrix2fv(this.maskPipelineInfo!.progUniforms['u_transform_2d'], false, transform_2d_mat);
     
     // 上传骨骼数据到 Mask Pass（仅骨骼矩阵，blendshape 权重在 per-mesh 循环内更新）
@@ -956,7 +964,7 @@ export class GLPipelineMP {
     this.device.gl.bindFramebuffer(this.device.gl.FRAMEBUFFER, this.FrameBuffer_MSAA);
     this.device.gl.clear(this.device.gl.COLOR_BUFFER_BIT | this.device.gl.DEPTH_BUFFER_BIT);
     this.device.gl.useProgram(this.meshPipelineInfo!.program);
-    this.device.gl.uniformMatrix4fv(this.meshPipelineInfo!.progUniforms['u_proj_mat'], true, proj_mat);
+    this.device.gl.uniformMatrix4fv(this.meshPipelineInfo!.progUniforms['u_proj_mat'], false, proj_mat);
     this.device.gl.uniformMatrix2fv(this.meshPipelineInfo!.progUniforms['u_transform_2d'], false, transform_2d_mat);
     
     // 上传骨骼数据到 Mesh Pass
