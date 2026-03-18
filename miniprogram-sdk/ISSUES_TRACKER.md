@@ -39,13 +39,16 @@
 - [ ] **S9**: extra 参数未透传到 sendText
 - [ ] **A9**: 临时文件累积清理（init/destroy 时清理 tts_*.wav）
 
-## 待修复（低优先级 / 可选）
+## 已修复（低优先级）
 
-- [ ] **W4**: PCA UBO 在 WebGL1 降级环境无 fallback
-- [ ] **W6**: LUT 纹理创建逻辑缺失
-- [ ] **W8**: VAO 创建但从未使用（资源泄漏）
-- [ ] **S4**: Socket.IO 命名空间 (nsp) 解析支持
-- [ ] **A10**: 音量渐变动画在段切换时产生波动
+- [x] **W8**: VAO 创建改为 null（节省 GPU 内存）
+- [x] **S4**: Socket.IO 解析增加命名空间(nsp)剥离
+- [x] **A10**: 音量设置改为直接赋值（移除渐变动画）
+
+## 暂不修复（风险低/无影响）
+
+- [ ] **W4**: PCA UBO WebGL1 fallback — 小程序基本都是 WebGL2
+- [ ] **W6**: LUT 纹理创建 — 当前 LUT=null 且 flags 不含 bit1
 
 ## 不需要修复
 
