@@ -197,7 +197,16 @@ export class AvatarRendererMP {
       const raw = alignedData.FaceFrameData;
       const result = new IBRAnimationFrameData_NN();
 
-      if (raw.blendshapeWeights) result.blendshapeWeights = new Float32Array(raw.blendshapeWeights);
+      // 关键修复：使用 mesh[0].blendshapeWeights（经过 blendshapeMap 映射后的值），
+      // 而非原始 bsw。blendshapeIndices 期望的是 char.bin 定义的顺序，
+      // 原始 bsw 是服务端顺序，两者不一致会导致嘴型权重全部取错。
+      // Web SDK 的 IBRAnimationFrameData_NN 也是按 blendshapeIndices 索引填充的。
+      if (raw.mesh?.[0]?.blendshapeWeights?.length > 0) {
+        result.blendshapeWeights = new Float32Array(raw.mesh[0].blendshapeWeights);
+      } else if (raw.blendshapeWeights) {
+        // fallback：无 mesh 映射时用原始 bsw
+        result.blendshapeWeights = new Float32Array(raw.blendshapeWeights);
+      }
 
       if (raw.mesh && Array.isArray(raw.mesh)) {
           result.mesh = raw.mesh.map((m: any) => {
@@ -276,17 +285,31 @@ export class AvatarRendererMP {
     }
   }
 
-  /** 统一 face 数据查找：精确匹配 → bodyId=0 兜底 → 最新数据兜底 */
+  /** 统一 face 数据查找：同时查两个队列，优先使用 ef 更大（更新）的数据。
+   *  speak 时 lipsync 数据在 facialQueue（face_frame_type=1），必须优先于
+   *  realFacialQueue 中旧的视频追踪数据，否则嘴型永远不动。 */
   private _findFaceData(frameIndex: number, bodyId: number) {
-    let data = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
-    if (!data) data = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
+    // 同时查两个队列，取 ef 更大的（更新的数据优先）
+    const realData = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
+    const facialData = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
+    let data = this._pickNewerFaceData(realData, facialData);
+
     if (!data && bodyId !== 0) {
-      data = this.dataCacheQueue.getRealFaceData(frameIndex, 0)
-        || this.dataCacheQueue.getFaceData(frameIndex, 0);
+      const realData0 = this.dataCacheQueue.getRealFaceData(frameIndex, 0);
+      const facialData0 = this.dataCacheQueue.getFaceData(frameIndex, 0);
+      data = this._pickNewerFaceData(realData0, facialData0);
     }
     // 终极兜底：timelineFrameIndex 与服务端 sf/ef 不对齐时用最新数据
     if (!data) data = this.dataCacheQueue.getLatestFaceData();
     return data;
+  }
+
+  /** 从两个候选中选择 ef 更大（更新）的数据 */
+  private _pickNewerFaceData(a: any, b: any): any {
+    if (a && b) {
+      return ((b.ef ?? 0) >= (a.ef ?? 0)) ? b : a;
+    }
+    return a || b || null;
   }
 
   getBodyRenderer(): BodyRendererMP {
