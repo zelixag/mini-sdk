@@ -106,7 +106,11 @@ export class XmovAvatarMP {
   private audioPlaying = false;
   /** 最近一次收到的音频 sid（用于检测 sid 变化） */
   private lastIncomingAudioSid = -1;
-  private audioFlushDelayMs = 600;
+  private audioFlushDelayMs = 300;
+  /** 打断标记：递增 token，旧 cleanup 闭包检测到不一致则放弃执行 */
+  private _audioCancelToken = 0;
+  /** 已打断的 sid，后续延迟到达的同 sid 数据直接丢弃 */
+  private _discardedSid = -1;
 
   constructor(options: any = {}) {
     this.options = options;
@@ -122,9 +126,24 @@ export class XmovAvatarMP {
     if (this.status === 'destroyed') {
       throw new Error('[XmovAvatarMP] instance already destroyed');
     }
+    // A9: 清理上次残留的临时音频文件，防止存储空间耗尽
+    this.cleanupTempAudioFiles();
     this.status = 'inited';
     this.emitStatus(this.status);
     return true;
+  }
+
+  /** A9: 清理 USER_DATA_PATH 下残留的 tts_*.wav / tts_*.mp3 临时文件 */
+  private cleanupTempAudioFiles(): void {
+    try {
+      const fs = wx.getFileSystemManager();
+      const files = fs.readdirSync(wx.env.USER_DATA_PATH) as string[];
+      for (const file of files) {
+        if (file.startsWith('tts_')) {
+          try { fs.unlinkSync(`${wx.env.USER_DATA_PATH}/${file}`); } catch {}
+        }
+      }
+    } catch {}
   }
 
   async start(): Promise<boolean> {
@@ -162,6 +181,7 @@ export class XmovAvatarMP {
 
   destroy(): boolean {
     this.clearAudioQueue();
+    this.cleanupTempAudioFiles(); // A9: 清理残留临时文件
     this.renderScheduler?.destroy();
     this.avatarRenderer?.destroy();
     this.audioAdapter?.destroy();
@@ -269,15 +289,14 @@ export class XmovAvatarMP {
   speak(ssml: string, is_start: boolean = true, is_end: boolean = true, extra = { client_speak_id: '' }): string | null {
     this._speakCalledAt = Date.now();
 
-    // 与 Web SDK 对齐：speak 前先执行打断逻辑
-    // Web SDK: renderScheduler.interrupt("speak") → 清音频/face data, 停播放, 发 voice_end
+    // 与 Web SDK 对齐：speak 前只做本地打断（清音频队列 + 停播放）
+    // Web SDK: renderScheduler.interrupt("speak") 是纯本地操作，不发 state_change 到服务端
+    // 注意：不要在这里发 state_change: interactive_idle，Web SDK 不这样做，
+    // 额外发可能导致服务端状态机竞态（interactive_idle 和 send_text 几乎同时到达）
     this.clearAudioQueue();
 
-    // 通知服务端中断当前 speak（如果正在播报），使服务端状态机回到可接受新 speak 的状态
-    // 这是修复"第二次 speak 无响应"的关键：服务端可能卡在上一次的 speak 状态
-    this.sendSocket('state_change', { state: 'interactive_idle', params: {} });
-
-    const result = this.sendText(ssml, { isStart: is_start, isEnd: is_end });
+    // S9 修复：透传 extra 参数到 sendText（对齐 Web SDK）
+    const result = this.sendText(ssml, { isStart: is_start, isEnd: is_end, extra });
     return result;
   }
 
@@ -285,7 +304,7 @@ export class XmovAvatarMP {
    * 发送文本驱动 TTS（上行 send_text）
    * 需在 TTSA 连接就绪后调用
    */
-  sendText(text: string, options?: { isStart?: boolean; isEnd?: boolean; pitch?: string; speed?: string; volume?: string }): string | null {
+  sendText(text: string, options?: { isStart?: boolean; isEnd?: boolean; pitch?: string; speed?: string; volume?: string; extra?: { client_speak_id: string } }): string | null {
     const socket = this.ttsaSocket;
     if (!socket?.connected) {
       log.error('sendText: socket 未连接');
@@ -298,9 +317,13 @@ export class XmovAvatarMP {
       this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] sendText: session_id is empty');
       return null;
     }
-    const uniqueSpeakId = `mp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    (this as any)._speakIdSeq = ((this as any)._speakIdSeq || 0) + 1;
-    const sessionSpeakReqId = (this as any)._speakIdSeq;
+    // 与 Web SDK 完全对齐：
+    // 1. multi_turn_conversation_id 格式: "{递增数字}-{session_id}"（不是随机串）
+    // 2. session_speak_req_id 从 0 开始，先用后递增
+    if ((this as any)._uniqueSpeakId == null) (this as any)._uniqueSpeakId = 0;
+    if ((this as any)._speakIdSeq == null) (this as any)._speakIdSeq = 0;
+    const uniqueSpeakId = `${(this as any)._uniqueSpeakId}-${sessionId}`;
+    const sessionSpeakReqId: number = (this as any)._speakIdSeq;
 
     const pitch = options?.pitch ?? '1';
     const speed = options?.speed ?? '1';
@@ -309,37 +332,30 @@ export class XmovAvatarMP {
       ? text
       : `<speak pitch="${pitch}" speed="${speed}" volume="${volume}">${text}</speak>`;
 
-    // 先发送 sdk_burial_point 埋点（告诉服务端客户端已准备好接收数据）
-    const burialPayload = {
+    // Web SDK 对齐：先发 sdk_burial_point（speak_id 用当前值并递增），再发 send_text
+    socket.emit('sdk_burial_point', {
       ssml,
       is_start: options?.isStart ?? true,
       is_end: options?.isEnd ?? true,
       multi_turn_conversation_id: uniqueSpeakId,
-      speak_id: sessionSpeakReqId,
-      appId: this.options?.appId,
-      appSecret: this.options?.appSecret,
-      env: 'production',
-      burial_type: 1,
-      session_id: sessionId,
-      event_en_name: 'llm_text_sdk_received',
-      event_cn_name: '大模型输出的文本SDK前端收到',
-      device: 'Mozilla/5.0 (iPhone; CPU iPhone OS like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.0',
-      timestamp: Date.now(),
-      sdkVersion: '0.1.0-alpha'
-    };
-    socket.emit('sdk_burial_point', burialPayload);
+      speak_id: (this as any)._speakIdSeq++, // 先用后递增，与 Web SDK 一致
+      content: { ssml },
+    });
 
     const payload = {
       ssml,
       is_start: options?.isStart ?? true,
       is_end: options?.isEnd ?? true,
+      extra: { client_speak_id: options?.extra?.client_speak_id || uniqueSpeakId },
       multi_turn_conversation_id: uniqueSpeakId,
       session_speak_req_id: sessionSpeakReqId,
-      extra: {
-        client_speak_id: uniqueSpeakId
-      }
     };
     socket.emit('send_text', payload);
+
+    // Web SDK: is_end 时递增 _uniqueSpeakId
+    if (options?.isEnd ?? true) {
+      (this as any)._uniqueSpeakId += 1;
+    }
     return uniqueSpeakId;
   }
 
@@ -681,6 +697,12 @@ export class XmovAvatarMP {
         }
       });
 
+      // S6: 监听服务端主动报错（TTS 引擎异常、文本过长等）
+      socket.on('error_message', (e: any) => {
+        log.error('TTSA error_message:', e);
+        this.emitMessage(EErrorCode.INIT_FAILED, '[XmovAvatarMP] TTSA server error: ' + (e?.msg || JSON.stringify(e)));
+      });
+
       socket.on('connect_error', (err: any) => {
         log.error('TTSA connect_error:', err);
         this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA connect_error', err);
@@ -691,6 +713,15 @@ export class XmovAvatarMP {
         log.error('TTSA socket error:', err);
         this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA error', err);
         if (!resolved) finish(false);
+      });
+
+      // S7: 监听服务端主动踢出（session 过期、admin kick、资源加载失败等）
+      // Web SDK: client_quit 后重置 session_speak_req_id 并断连重启
+      socket.on('client_quit', (e: any) => {
+        log.warn('TTSA client_quit:', e);
+        (this as any)._speakIdSeq = 0;
+        (this as any)._uniqueSpeakId = 0;
+        this.emitMessage(EErrorCode.WEBSOCKET_CONNECT_ERROR, '[XmovAvatarMP] TTSA client_quit: ' + (e?.reason || JSON.stringify(e)));
       });
 
       socket.on('disconnect', (reason: any) => {
@@ -822,6 +853,8 @@ export class XmovAvatarMP {
 
       for (const item of arr) {
         const sid: number = item.sid ?? 0;
+        // A7 修复：过滤已打断的 sid，防止旧数据延迟到达后被当作新数据播放
+        if (sid === this._discardedSid) continue;
         const adBytes = this.extractAudioBytes(item.ad);
         if (!adBytes || adBytes.byteLength === 0) continue;
 
@@ -878,7 +911,11 @@ export class XmovAvatarMP {
 
     try {
       // writeFileSync 需要 ArrayBuffer，精确裁剪避免因 byteOffset 引起多余字节
-      const buf = rawAudio ? this.pcmToWav(merged) : merged.buffer.slice(merged.byteOffset, merged.byteOffset + merged.byteLength);
+      // A3: 从配置读取采样率，不硬编码
+      const sampleRate = this.options?.config?.sample_rate ?? this.sessionInfo?.config?.sample_rate ?? 24000;
+      // A8: PCM 16bit 字节对齐
+      const alignedMerged = (rawAudio && merged.byteLength % 2 !== 0) ? merged.subarray(0, merged.byteLength - 1) : merged;
+      const buf = rawAudio ? this.pcmToWav(alignedMerged, sampleRate) : merged.buffer.slice(merged.byteOffset, merged.byteOffset + merged.byteLength);
       wx.getFileSystemManager().writeFileSync(tempPath, buf, 'binary');
       this.audioPlayQueue.push({ path: tempPath, sid });
       this.playNextAudio();
@@ -897,27 +934,28 @@ export class XmovAvatarMP {
     const item = this.audioPlayQueue.shift()!;
     this.audioPlaying = true;
 
+    // A2 修复：捕获当前 cancelToken，cleanup 时检查是否已被打断
+    const token = this._audioCancelToken;
     const cleanup = () => {
+      if (this._audioCancelToken !== token) return; // 已被 clearAudioQueue 打断，放弃
       this.audioAdapter?.off('ended');
       this.audioAdapter?.off('error');
-      this.audioAdapter?.off('canplay');
       this.audioPlaying = false;
       try { wx.getFileSystemManager().unlinkSync(item.path); } catch {}
       this.playNextAudio();
     };
 
+    // A1 修复：使用 autoplay 替代 canplay→play 手动触发
+    // 避免 canplay 在某些机型不触发或多次触发的问题
     this.audioAdapter.off('ended');
     this.audioAdapter.off('error');
-    this.audioAdapter.off('canplay');
     this.audioAdapter.on('ended', cleanup);
     this.audioAdapter.on('error', (err: any) => {
       log.error('tts_audio InnerAudioContext error:', err, 'path:', item.path);
       cleanup();
     });
-    this.audioAdapter.on('canplay', () => {
-      this.audioAdapter?.play();
-    });
 
+    this.audioAdapter.autoplay = true;
     this.audioAdapter.src = item.path;
   }
 
@@ -929,8 +967,15 @@ export class XmovAvatarMP {
       clearTimeout(this.ttsAudioFlushTimer);
       this.ttsAudioFlushTimer = null;
     }
+    // A7: 记录被打断的 sid，后续延迟到达的同 sid 数据直接丢弃
+    if (this.lastIncomingAudioSid >= 0) {
+      this._discardedSid = this.lastIncomingAudioSid;
+    }
     this.ttsAudioChunks.clear();
     this.lastIncomingAudioSid = -1;
+
+    // A2: 递增 cancelToken，让正在执行的旧 cleanup 闭包失效
+    this._audioCancelToken++;
 
     const fs = wx.getFileSystemManager();
     for (const item of this.audioPlayQueue) {

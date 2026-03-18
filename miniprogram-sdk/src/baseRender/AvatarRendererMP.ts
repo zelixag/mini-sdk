@@ -220,23 +220,18 @@ export class AvatarRendererMP {
     if (this.pipeline) {
       // GLPipeline 路径：face mesh + body 融合渲染
       const rawBody = this.bodyRenderer.getRawFrame(frameIndex);
-      if (!rawBody) return;
+      if (!rawBody) {
+        // rawBody 不可用时降级到 fallback，不直接 return
+        // 否则 face 数据积压后被 trimFaceDataBefore 清除，嘴型永远不动
+        const fb = this._findFaceData(frameIndex, bodyId);
+        const signal = this.faceSignalAdapter.extract(fb);
+        const mouthOpen = this.lipSyncController.update(frameIndex, signal);
+        this.bodyRenderer.renderFrame(frameIndex, mouthOpen);
+        return;
+      }
 
-      // 与 Web SDK 对齐的 face 数据查找策略：
-      // 1. 先用精确 bodyId 匹配
-      // 2. 匹配失败时，尝试 bodyId=0 兜底（body 数据延迟到达时 bodyId 默认为 0）
-      // 3. 仍然失败时，使用上一帧的有效 face 数据（Web SDK 的 lastRealFaceFrameData 逻辑）
-      let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
-      if (!faceDataAligned) {
-        faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
-      }
-      // bodyId 兜底：face 数据的 body_id 可能与当前 body chunk 不一致（网络延迟）
-      if (!faceDataAligned && bodyId !== 0) {
-        faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, 0);
-        if (!faceDataAligned) {
-          faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, 0);
-        }
-      }
+      // face 数据查找：精确匹配 → bodyId=0 兜底 → 最新数据兜底
+      let faceDataAligned = this._findFaceData(frameIndex, bodyId);
 
       let faceDataNN = this.convertFaceData(faceDataAligned);
 
@@ -258,20 +253,24 @@ export class AvatarRendererMP {
       );
     } else {
       // 降级路径：纯 body 渲染 + 嘴型遮罩
-      // 不调用 getRawFrame（避免消耗帧），由 bodyRenderer.renderFrame 内部处理
-      let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
-      if (!faceDataAligned) {
-        faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
-      }
-      // bodyId 兜底
-      if (!faceDataAligned && bodyId !== 0) {
-        faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, 0)
-          || this.dataCacheQueue.getFaceData(frameIndex, 0);
-      }
+      const faceDataAligned = this._findFaceData(frameIndex, bodyId);
       const signal = this.faceSignalAdapter.extract(faceDataAligned);
       const mouthOpen = this.lipSyncController.update(frameIndex, signal);
       this.bodyRenderer.renderFrame(frameIndex, mouthOpen);
     }
+  }
+
+  /** 统一 face 数据查找：精确匹配 → bodyId=0 兜底 → 最新数据兜底 */
+  private _findFaceData(frameIndex: number, bodyId: number) {
+    let data = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
+    if (!data) data = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
+    if (!data && bodyId !== 0) {
+      data = this.dataCacheQueue.getRealFaceData(frameIndex, 0)
+        || this.dataCacheQueue.getFaceData(frameIndex, 0);
+    }
+    // 终极兜底：timelineFrameIndex 与服务端 sf/ef 不对齐时用最新数据
+    if (!data) data = this.dataCacheQueue.getLatestFaceData();
+    return data;
   }
 
   getBodyRenderer(): BodyRendererMP {
