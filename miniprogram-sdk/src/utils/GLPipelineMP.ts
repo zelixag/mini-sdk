@@ -876,6 +876,11 @@ export class GLPipelineMP {
     }
 
     for (let mesh_index = 0; mesh_index < char.mesh.length; mesh_index++) {
+      // Web SDK: only meshes with genMask=true should contribute to the alpha mask.
+      // Without this check, non-mask meshes (e.g. eye interiors, oral cavity) pollute
+      // the alpha channel and cause incorrect compositing with the body video.
+      if(!char.mesh[mesh_index].genMask) continue;
+
         const currentMeshInfo = this.meshInfos[mesh_index];
 
         if (char.mesh[mesh_index].blendshapes.size[0] > 1) {
@@ -896,12 +901,6 @@ export class GLPipelineMP {
         for (const var_name in currentMeshInfo.uniformUInts)this.device.gl.uniform1ui(this.maskPipelineInfo!.progUniforms[var_name], currentMeshInfo.uniformUInts[var_name]);
         this.device.gl.uniform1ui(this.maskPipelineInfo!.progUniforms['flags'], flags);
 
-        // 移除 UBO 绑定
-        // this.device.gl.bindBuffer(this.device.gl.UNIFORM_BUFFER, currentMeshInfo.buffers!['ub_rig_info']);
-        // this.device.gl.bufferData(this.device.gl.UNIFORM_BUFFER, this._ub_rig_info_data, this.device.gl.DYNAMIC_DRAW);
-        // this.device.gl.bindBufferBase(this.device.gl.UNIFORM_BUFFER, 0, currentMeshInfo.buffers!["ub_rig_info"]);
-
-        // this.device.gl.bindVertexArray(currentMeshInfo.VAO);
         // 手动绑定 Attributes
         this.device.gl.bindBuffer(this.device.gl.ARRAY_BUFFER, currentMeshInfo.buffers!['pos']);
         this.device.gl.enableVertexAttribArray(0);
@@ -942,7 +941,7 @@ export class GLPipelineMP {
             this.device.gl.disableVertexAttribArray(6);
             this.device.gl.vertexAttrib4f(6, 0.0, 0.0, 0.0, 0.0);
         }
-        
+
         this.device.gl.bindBuffer(this.device.gl.ELEMENT_ARRAY_BUFFER, currentMeshInfo.buffers!["indices"]);
 
         this.device.gl.uniform1i(this.maskPipelineInfo!.progUniforms[`u_image_bs`], 0);

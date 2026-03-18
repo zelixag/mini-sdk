@@ -268,8 +268,17 @@ export class XmovAvatarMP {
    */
   speak(ssml: string, is_start: boolean = true, is_end: boolean = true, extra = { client_speak_id: '' }): string | null {
     this._speakCalledAt = Date.now();
+
+    // 与 Web SDK 对齐：speak 前先执行打断逻辑
+    // Web SDK: renderScheduler.interrupt("speak") → 清音频/face data, 停播放, 发 voice_end
     this.clearAudioQueue();
-    return this.sendText(ssml, { isStart: is_start, isEnd: is_end });
+
+    // 通知服务端中断当前 speak（如果正在播报），使服务端状态机回到可接受新 speak 的状态
+    // 这是修复"第二次 speak 无响应"的关键：服务端可能卡在上一次的 speak 状态
+    this.sendSocket('state_change', { state: 'interactive_idle', params: {} });
+
+    const result = this.sendText(ssml, { isStart: is_start, isEnd: is_end });
+    return result;
   }
 
   /**
@@ -623,6 +632,23 @@ export class XmovAvatarMP {
           }
         } catch (err) {
           this.emitMessage(EErrorCode.INIT_FAILED, '[XmovAvatarMP] onBodyData decode/callback failed', String(err));
+        }
+      });
+
+      // Web SDK: ws.on("state_change", ...) — 服务端在 speak 结束、idle 切换等场景下发此事件。
+      // 缺少此监听会导致：
+      // 1. 若服务端发送 state_change 带 Ack 请求，客户端无法回复 Ack，
+      //    服务端可能认为客户端未确认状态转换，内部状态机卡在 "speak"，拒绝后续 send_text。
+      // 2. 客户端无法追踪当前服务端状态（speak/idle/interactive_idle 等）。
+      socket.on('state_change', (e: any, ack?: Function) => {
+        log.info('state_change from server:', JSON.stringify(e));
+        const onStateChange = this.options?.onStateChange;
+        if (typeof onStateChange === 'function') {
+          try { onStateChange(e); } catch {}
+        }
+        // 回复 Ack（如果服务端请求了）——这是修复第二次 speak 无响应的关键
+        if (typeof ack === 'function') {
+          try { ack(); } catch {}
         }
       });
 

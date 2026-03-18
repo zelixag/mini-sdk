@@ -390,11 +390,21 @@ export class MiniProgramWebSocket {
             }
             
             if (packet.id !== undefined) {
-                // 需要 Ack
+                // 需要 Ack：服务端 emit(event, data, callback) 期望客户端回复确认
+                let ackSent = false;
                 const ackCallback = (...args: any[]) => {
-                    this.sendAck(packet.id!, args);
+                    if (!ackSent) {
+                      ackSent = true;
+                      this.sendAck(packet.id!, args);
+                    }
                 };
                 this._emit(packet.emitEvent, packet.emitPayload, ackCallback);
+                // 兜底：如果没有 listener 调用 ack（或者根本没注册 listener），自动回复空 Ack
+                // 这是修复"第二次 speak 无响应"的关键：若服务端发 state_change 带 Ack 但客户端
+                // 没有 listener 回复，服务端状态机会卡住，拒绝后续 send_text
+                if (!ackSent) {
+                  this.sendAck(packet.id!, []);
+                }
             } else {
                 this._emit(packet.emitEvent, packet.emitPayload);
             }

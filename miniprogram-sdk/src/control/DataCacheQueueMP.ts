@@ -71,6 +71,13 @@ export class DataCacheQueueMP {
     return null;
   }
 
+  /** 获取最新的 face 数据（忽略 bodyId 和 frameIndex 范围，用于无精确匹配时的兜底） */
+  getLatestFaceData(): IAlignedFaceFrameData | null {
+    if (this.realFacialQueue.length > 0) return this.realFacialQueue[this.realFacialQueue.length - 1];
+    if (this.facialQueue.length > 0) return this.facialQueue[this.facialQueue.length - 1];
+    return null;
+  }
+
   /** 清理过期 face 数据（ef < frameIndex） */
   trimFaceDataBefore(frameIndex: number): void {
     this.facialQueue = this.facialQueue.filter((item) => item.ef >= frameIndex);

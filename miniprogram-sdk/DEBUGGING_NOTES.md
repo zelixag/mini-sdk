@@ -226,10 +226,40 @@ const DEBUG_FACE_OFFSET_Y_NDC = 0.0;
 
 ---
 
+## 问题六：非遮罩网格（眼球内部/口腔）污染 alpha 通道
+
+### 现象
+面部合成时，眼球、口腔等区域的 alpha 边缘出现异常，导致与 body video 合成时透明度不正确，产生"脏边"或局部穿帮。
+
+### 根本原因
+Web SDK 的 mask pass 中有 `genMask` 检查：
+```typescript
+// Web SDK GLPipeline.ts:761
+if(char.mesh[mesh_index].genMask){
+    // 只为标记了 genMask=true 的 mesh 生成 alpha mask
+}
+```
+
+小程序版的 mask pass **没有** 这个检查，导致所有 mesh（包括 genMask=false 的眼球内部、口腔等）都参与 mask 渲染，污染了 alpha 通道。
+
+`genMask` 字段在 `DataInterfaceMP.ts` 中已正确解析（v3.0 从 meshFlag 位读取，v2.0 默认 true），但从未在渲染管线中使用。
+
+### 修复
+**文件：** `src/utils/GLPipelineMP.ts`，mask pass 的 mesh 循环开头增加：
+
+```typescript
+for (let mesh_index = 0; mesh_index < char.mesh.length; mesh_index++) {
+    if(!char.mesh[mesh_index].genMask) continue;  // ← 新增
+    // ... 原有 mask 渲染逻辑
+}
+```
+
+---
+
 ## 修改文件汇总
 
 | 文件 | 修改内容 |
 |------|---------|
 | `src/utils/GLDeviceMP.ts` | 修复 `texImage2D` 浮点纹理内部格式（`gl.RGBA` → `gl.RGBA32F`） |
 | `src/utils/DataInterfaceMP.ts` | `transformMJT()` 支持对象格式；四元数 XYZW→WXYZ 重排 |
-| `src/utils/GLPipelineMP.ts` | 投影使用 `videoWidth/2` × `videoHeight`；添加 `width/height` 别名防 ReferenceError；眼球骨骼锚定修正；NDC 微调常量 |
+| `src/utils/GLPipelineMP.ts` | 投影使用 `videoWidth/2` × `videoHeight`；添加 `width/height` 别名防 ReferenceError；眼球骨骼锚定修正；NDC 微调常量；**mask pass 增加 genMask 检查** |

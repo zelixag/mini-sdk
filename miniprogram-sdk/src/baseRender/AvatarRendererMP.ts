@@ -57,6 +57,10 @@ export class AvatarRendererMP {
   private pipeline: GLPipelineMP | null = null;
   private runtimeFaceAlignConfig: FaceAlignmentConfigMP | null = null;
 
+  // Web SDK 对齐：缓存上一帧有效的 face 数据，当前帧找不到时用作 fallback
+  // 防止因 body_id 不匹配、帧索引间隙、数据延迟等导致 face mesh 被跳过
+  private lastValidFaceData: IBRAnimationFrameData_NN | null = null;
+
   private applyFaceAlignmentConfig(): void {
     if (!this.pipeline) return;
     const cfg = this.resourceManager.getConfig?.() || {};
@@ -210,18 +214,39 @@ export class AvatarRendererMP {
   render(frameIndex: number): void {
     if (!this.isInit) return;
 
-    const bodyId = (this.bodyRenderer.findBodyChunk(frameIndex) as any)?.body_id || 0;
+    const bodyChunk = this.bodyRenderer.findBodyChunk(frameIndex) as any;
+    const bodyId = bodyChunk?.body_id || 0;
 
     if (this.pipeline) {
       // GLPipeline 路径：face mesh + body 融合渲染
       const rawBody = this.bodyRenderer.getRawFrame(frameIndex);
       if (!rawBody) return;
 
+      // 与 Web SDK 对齐的 face 数据查找策略：
+      // 1. 先用精确 bodyId 匹配
+      // 2. 匹配失败时，尝试 bodyId=0 兜底（body 数据延迟到达时 bodyId 默认为 0）
+      // 3. 仍然失败时，使用上一帧的有效 face 数据（Web SDK 的 lastRealFaceFrameData 逻辑）
       let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
       if (!faceDataAligned) {
         faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
       }
-      const faceDataNN = this.convertFaceData(faceDataAligned);
+      // bodyId 兜底：face 数据的 body_id 可能与当前 body chunk 不一致（网络延迟）
+      if (!faceDataAligned && bodyId !== 0) {
+        faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, 0);
+        if (!faceDataAligned) {
+          faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, 0);
+        }
+      }
+
+      let faceDataNN = this.convertFaceData(faceDataAligned);
+
+      // Web SDK 对齐：如果当前帧找不到 face 数据，复用上一帧的有效数据
+      // 防止 face mesh 短暂消失导致嘴型静止（用户看到的"嘴不动"）
+      if (faceDataNN) {
+        this.lastValidFaceData = faceDataNN;
+      } else if (this.lastValidFaceData) {
+        faceDataNN = this.lastValidFaceData;
+      }
 
       this.pipeline.renderFrame(
         rawBody.data,
@@ -237,6 +262,11 @@ export class AvatarRendererMP {
       let faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, bodyId);
       if (!faceDataAligned) {
         faceDataAligned = this.dataCacheQueue.getFaceData(frameIndex, bodyId);
+      }
+      // bodyId 兜底
+      if (!faceDataAligned && bodyId !== 0) {
+        faceDataAligned = this.dataCacheQueue.getRealFaceData(frameIndex, 0)
+          || this.dataCacheQueue.getFaceData(frameIndex, 0);
       }
       const signal = this.faceSignalAdapter.extract(faceDataAligned);
       const mouthOpen = this.lipSyncController.update(frameIndex, signal);
